@@ -4,7 +4,7 @@ function s:url_encode(str)
         \ ->join('')
 endfunction
 
-function google_cgi#henkan(str) abort
+function tuskk#google_cgi#henkan(str) abort
   let url_base = 'http://www.google.com/transliterate?langpair=ja-Hira|ja&text='
   let encoded = s:url_encode(a:str)
   let result = system($"curl -s '{url_base}{encoded}'")

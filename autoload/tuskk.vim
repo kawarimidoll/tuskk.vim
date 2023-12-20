@@ -220,7 +220,7 @@ function s:on_kakutei_special(user_data) abort
   let special = a:user_data.special
 
   if special ==# 'google'
-    let google_result = google_cgi#henkan(yomi)
+    let google_result = tuskk#google_cgi#henkan(yomi)
     if google_result ==# ''
       call tuskk#utils#echoerr('Google変換で結果が得られませんでした。')
       return
