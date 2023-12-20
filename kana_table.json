@@ -238,6 +238,6 @@
   "<right>": { "func": "shrink" },
   "zq": { "mode": "han_kata" },
   "<c-l>": { "mode": "zen_alnum" },
-  "<esc>": { "call": "h#disable", "args": [true] },
+  "<esc>": { "call": "tuskk#disable", "args": [true] },
   "@": { "expr": "strftime", "args": ["%Y/%m/%d"] }
 }
