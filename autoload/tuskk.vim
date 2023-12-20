@@ -6,10 +6,10 @@ endfunction
 
 " vim 2146以前ではE340が出るため使用不可 https://github.com/vim/vim/issues/13609
 if !exists('*keytrans') || exists(':defer') != 2 || (!has('nvim') && !has('patch-9.0.2146'))
-  call utils#echoerr('このバージョンの' .. v:progname .. 'はサポートしていません')
+  call tuskk#utils#echoerr('このバージョンの' .. v:progname .. 'はサポートしていません')
   finish
 elseif !executable('rg')
-  call utils#echoerr('ripgrep (rg) が必要です https://github.com/BurntSushi/ripgrep')
+  call tuskk#utils#echoerr('ripgrep (rg) が必要です https://github.com/BurntSushi/ripgrep')
   finish
 endif
 
@@ -57,8 +57,8 @@ function tuskk#enable() abort
   if s:is_enable
     return
   endif
-  call utils#do_user('tuskk_enable_pre')
-  defer utils#do_user('tuskk_enable_post')
+  call tuskk#utils#do_user('tuskk_enable_pre')
+  defer tuskk#utils#do_user('tuskk_enable_post')
 
   augroup tuskk_inner_augroup
     autocmd!
@@ -107,8 +107,8 @@ function tuskk#disable(escape = v:false) abort
   if !s:is_enable
     return
   endif
-  call utils#do_user('tuskk_disable_pre')
-  defer utils#do_user('tuskk_disable_post')
+  call tuskk#utils#do_user('tuskk_disable_pre')
+  defer tuskk#utils#do_user('tuskk_disable_post')
 
   autocmd! tuskk_inner_augroup
 
@@ -150,12 +150,12 @@ function tuskk#toggle() abort
 endfunction
 
 function tuskk#init(opts = {}) abort
-  call utils#do_user('tuskk_initialize_pre')
-  defer utils#do_user('tuskk_initialize_post')
+  call tuskk#utils#do_user('tuskk_initialize_pre')
+  defer tuskk#utils#do_user('tuskk_initialize_post')
   try
     call opts#parse(a:opts)
   catch
-    call utils#echoerr($'[init] {v:exception}', 'abort')
+    call tuskk#utils#echoerr($'[init] {v:exception}', 'abort')
     return
   endtry
 
@@ -170,20 +170,20 @@ endfunction
 function tuskk#henkan_buffer(p1, p2, opts = {}) abort
   let exclusive = get(a:opts, 'exclusive', v:false)
   if a:p1[0] != a:p2[0]
-    call utils#echoerr('同じ行である必要があります')
+    call tuskk#utils#echoerr('同じ行である必要があります')
     return
   elseif a:p1[1] == a:p2[1] && exclusive
-    call utils#echoerr('異なる列である必要があります')
+    call tuskk#utils#echoerr('異なる列である必要があります')
     return
   endif
 
-  let machi = utils#get_string(a:p1, a:p2, {'auto_swap': v:true, 'exclusive': exclusive})
+  let machi = tuskk#utils#get_string(a:p1, a:p2, {'auto_swap': v:true, 'exclusive': exclusive})
   let okuri = get(a:opts, 'okuri', '')
   if !okuri->empty() && machi =~# okuri .. '$'
     let machi = substitute(machi, okuri .. '$', '', '')
   endif
 
-  call cursor(utils#compare_pos(a:p1, a:p2) > 0 ? a:p2 : a:p1)
+  call cursor(tuskk#utils#compare_pos(a:p1, a:p2) > 0 ? a:p2 : a:p1)
 
   let stay = get(a:opts, 'stay', v:false)
   let s:henkan_buffer_context = { 'machi': machi, 'okuri': okuri, 'stay': stay }
@@ -222,7 +222,7 @@ function s:on_kakutei_special(user_data) abort
   if special ==# 'google'
     let google_result = google_cgi#henkan(yomi)
     if google_result ==# ''
-      call utils#echoerr('Google変換で結果が得られませんでした。')
+      call tuskk#utils#echoerr('Google変換で結果が得られませんでした。')
       return
     endif
 
@@ -250,7 +250,7 @@ function s:on_kakutei_special(user_data) abort
     return
   endif
 
-  call utils#echoerr('未実装 ' .. special)
+  call tuskk#utils#echoerr('未実装 ' .. special)
 endfunction
 
 function s:on_complete_changed(event) abort
@@ -386,7 +386,7 @@ function s:make_special_henkan_item(opts) abort
         \   'pos': pos,
         \   'machi': yomi,
         \   'okuri': okuri,
-        \   'consonant': utils#consonant1st(okuri),
+        \   'consonant': tuskk#utils#consonant1st(okuri),
         \   'is_trailing': pos[1] == col('$')
         \ }
   return {
@@ -489,7 +489,7 @@ function s:kakutei(fallback_key) abort
   if mode#is_start_sticky()
     call mode#set_anyway('hira')
   endif
-  return feed ==# '' ? utils#trans_special_key(a:fallback_key) : feed
+  return feed ==# '' ? tuskk#utils#trans_special_key(a:fallback_key) : feed
 endfunction
 
 function s:henkan(fallback_key) abort
@@ -505,7 +505,7 @@ function s:henkan(fallback_key) abort
     endif
     let feed = s:henkan_start()
   else
-    let feed = store#get('hanpa') .. utils#trans_special_key(a:fallback_key)
+    let feed = store#get('hanpa') .. tuskk#utils#trans_special_key(a:fallback_key)
   endif
   call store#clear('hanpa')
   return feed
@@ -518,7 +518,7 @@ function s:ins(key, with_sticky = v:false) abort
     let feed = s:handle_spec({ 'string': '', 'store': '', 'func': 'sticky' })
 
     let key = a:key->tolower()
-    call s:feed(utils#trans_special_key(feed) .. $"\<cmd>call {expand('<SID>')}ins('{key}')\<cr>")
+    call s:feed(tuskk#utils#trans_special_key(feed) .. $"\<cmd>call {expand('<SID>')}ins('{key}')\<cr>")
     return
   endif
 
@@ -528,14 +528,14 @@ function s:ins(key, with_sticky = v:false) abort
   let mode = get(spec, 'mode', '')
   if s:is_tuskk_completed() && mode ==# '' && index(['kakutei', 'backspace', 'henkan'], func) < 0
     let feed = s:handle_spec({ 'string': '', 'store': '', 'key': '', 'func': 'kakutei' })
-    call s:feed(utils#trans_special_key(feed) .. $"\<cmd>call {expand('<SID>')}ins('{a:key}')\<cr>")
+    call s:feed(tuskk#utils#trans_special_key(feed) .. $"\<cmd>call {expand('<SID>')}ins('{a:key}')\<cr>")
     return
   endif
 
   let feed = s:handle_spec(spec)
 
   if phase#is('machi') && s:last_machi != store#get('machi') && opts#get('suggest_wait_ms') >= 0
-    call utils#debounce(funcref('s:henkan_fuzzy'), opts#get('suggest_wait_ms'))
+    call tuskk#utils#debounce(funcref('s:henkan_fuzzy'), opts#get('suggest_wait_ms'))
   endif
   let s:last_machi = store#get('machi')
 
@@ -545,7 +545,7 @@ function s:ins(key, with_sticky = v:false) abort
       call s:feed("\<c-e>")
     endif
   else
-    call s:feed(utils#trans_special_key(feed) .. $"\<cmd>call {expand('<SID>')}display_marks()\<cr>")
+    call s:feed(tuskk#utils#trans_special_key(feed) .. $"\<cmd>call {expand('<SID>')}display_marks()\<cr>")
   endif
 endfunction
 
@@ -603,7 +603,7 @@ function s:handle_spec(args) abort
       endif
     elseif spec.func ==# 'extend'
       call s:mark_clear()
-      let char = utils#leftchar()
+      let char = tuskk#utils#leftchar()
       " 現状、ひらがなのみ対応
       if char =~ '^[ぁ-ゖ]$'
         call store#unshift('machi', char)
@@ -624,7 +624,7 @@ function s:handle_spec(args) abort
         endif
       endif
     else
-      call utils#echoerr('定義されていないfuncが使われました')
+      call tuskk#utils#echoerr('定義されていないfuncが使われました')
     endif
   elseif has_key(spec, 'mode')
     if store#is_present('okuri')
@@ -664,14 +664,14 @@ function s:handle_spec(args) abort
     let feed ..= $"\<cmd>call {expand('<SID>')}sticky()\<cr>"
   endif
 
-  if phase#is('hanpa') || utils#hasunprintable(feed)
+  if phase#is('hanpa') || tuskk#utils#hasunprintable(feed)
     return feed
   elseif phase#is('machi')
-    if opts#get('auto_henkan_characters') =~# utils#lastchar(feed)
+    if opts#get('auto_henkan_characters') =~# tuskk#utils#lastchar(feed)
       " ** EXPERIMENTAL **
       " machi状態でauto_henkan_charactersに含まれる文字が入力されたら
       " それをokuriに指定して送り変換を開始する
-      call store#push('okuri', utils#lastchar(feed))
+      call store#push('okuri', tuskk#utils#lastchar(feed))
       return s:henkan_start()
     else
       call store#push('machi', feed)
@@ -701,18 +701,18 @@ function s:display_marks(...) abort
   endif
   if store#is_present('kouho')
     call add(mark_process_list, ['clear', 'machi'])
-    let hlname = utils#ifempty(opts#get('highlight_kouho'), hlname)
+    let hlname = tuskk#utils#ifempty(opts#get('highlight_kouho'), hlname)
     call add(mark_process_list, ['put', 'kouho', hlname])
   elseif store#is_present('machi')
     call add(mark_process_list, ['clear', 'kouho'])
-    let hlname = utils#ifempty(opts#get('highlight_machi'), hlname)
+    let hlname = tuskk#utils#ifempty(opts#get('highlight_machi'), hlname)
     call add(mark_process_list, ['put', 'machi', hlname])
   else
     call add(mark_process_list, ['clear', 'kouho'])
     call add(mark_process_list, ['clear', 'machi'])
   endif
   if phase#is('okuri')
-    let hlname = utils#ifempty(opts#get('highlight_okuri'), hlname)
+    let hlname = tuskk#utils#ifempty(opts#get('highlight_okuri'), hlname)
   endif
   if store#is_present('okuri')
     call add(mark_process_list, ['put', 'okuri', hlname])

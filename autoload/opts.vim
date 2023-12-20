@@ -151,7 +151,7 @@ function opts#parse(opts) abort
   let shift_key_list = []
   let s:keymap_dict = {}
   for [k, val] in items(raw_kana_table)
-    let keys = utils#trans_special_key(k)->utils#strsplit()
+    let keys = tuskk#utils#trans_special_key(k)->tuskk#utils#strsplit()
     let preceding_keys = slice(keys, 0, -1)->join('')
     let start_key = slice(keys, 0, 1)->join('')
     let end_key = slice(keys, -1)->join('')
@@ -167,7 +167,7 @@ function opts#parse(opts) abort
     endif
     " 文字入力を開始するアルファベットのキーは変換開始キーとして使用する
     if type(val) == v:t_string && start_key =~# '^\l$'
-      call utils#uniq_add(shift_key_list, toupper(start_key))
+      call tuskk#utils#uniq_add(shift_key_list, toupper(start_key))
     endif
   endfor
 
@@ -187,10 +187,10 @@ function opts#parse(opts) abort
   let s:map_keys_dict = {}
   let s:kana_table = {}
   for [k, val] in items(raw_kana_table)
-    let key = utils#trans_special_key(k)->keytrans()
+    let key = tuskk#utils#trans_special_key(k)->keytrans()
     let s:kana_table[key] = val
 
-    let chars = utils#trans_special_key(k)->utils#strsplit()
+    let chars = tuskk#utils#trans_special_key(k)->tuskk#utils#strsplit()
 
     let tmp = copy(chars)
     while len(tmp) > 1

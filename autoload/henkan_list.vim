@@ -118,7 +118,7 @@ function henkan_list#update_manual_v2(machi, okuri = '') abort
   let query = s:gen_henkan_query(a:machi)
   let suffix = a:okuri ==# '' ? ''
         \ : opts#get('auto_henkan_characters') =~# a:okuri ? ''
-        \ : utils#consonant1st(a:okuri)
+        \ : tuskk#utils#consonant1st(a:okuri)
 
   let s:latest_henkan_list = s:populate_henkan_list(query .. suffix)
 endfunction
@@ -131,7 +131,7 @@ function henkan_list#update_fuzzy_v2(str, exact_match = v:false) abort
   if opts#get('suggest_sort_by') ==# 'length'
     call sort(henkan_list, {a,b -> a.user_data.len - b.user_data.len})
   elseif opts#get('suggest_sort_by') ==# 'code'
-    call sort(henkan_list, {a,b -> utils#strcmp(a.user_data.yomi, b.user_data.yomi)})
+    call sort(henkan_list, {a,b -> tuskk#utils#strcmp(a.user_data.yomi, b.user_data.yomi)})
   endif
 
   let s:latest_fuzzy_henkan_list = henkan_list
