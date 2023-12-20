@@ -1,9 +1,9 @@
 let s:mode_dict = {
-      \ 'hira': { 'conv': 'converters#as_is' },
-      \ 'zen_kata': { 'conv': 'converters#hira_to_kata' },
-      \ 'han_kata': { 'conv': 'converters#hira_to_han_kata' },
-      \ 'zen_alnum': { 'conv': 'converters#alnum_to_zen_alnum', 'direct': v:true },
-      \ 'abbrev': { 'conv': 'converters#as_is', 'direct': v:true, 'start_sticky': v:true },
+      \ 'hira': { 'conv': 'tuskk#converters#as_is' },
+      \ 'zen_kata': { 'conv': 'tuskk#converters#hira_to_kata' },
+      \ 'han_kata': { 'conv': 'tuskk#converters#hira_to_han_kata' },
+      \ 'zen_alnum': { 'conv': 'tuskk#converters#alnum_to_zen_alnum', 'direct': v:true },
+      \ 'abbrev': { 'conv': 'tuskk#converters#as_is', 'direct': v:true, 'start_sticky': v:true },
       \ }
 
 function mode#current_name() abort

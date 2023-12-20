@@ -14,8 +14,6 @@ elseif !executable('rg')
 endif
 
 call s:source('inline_mark')
-call s:source('google_cgi')
-call s:source('converters')
 call s:source('opts')
 call s:source('user_jisyo')
 call s:source('store')
@@ -150,7 +148,8 @@ function tuskk#toggle() abort
 endfunction
 
 function tuskk#init(opts = {}) abort
-  call tuskk#utils#do_user('tuskk_initialize_pre')
+  " 普通に使うとconvertersがautoloadされないためここを利用して呼び出しておく
+  call tuskk#utils#do_user(tuskk#converters#as_is('tuskk_initialize_pre'))
   defer tuskk#utils#do_user('tuskk_initialize_post')
   try
     call opts#parse(a:opts)

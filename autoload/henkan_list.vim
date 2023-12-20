@@ -100,12 +100,12 @@ function s:populate_henkan_list(query) abort
     endif
     for numstr in numstr_list
       let item['abbr'] = item['abbr']->substitute('#0', numstr, '')
-            \ ->substitute('#1', converters#numconv1(numstr), '')
-            \ ->substitute('#2', converters#numconv2(numstr), '')
-            \ ->substitute('#3', converters#numconv3(numstr), '')
-            \ ->substitute('#5', converters#numconv5(numstr), '')
-            \ ->substitute('#8', converters#numconv8(numstr), '')
-            \ ->substitute('#9', converters#numconv9(numstr), '')
+            \ ->substitute('#1', tuskk#converters#numconv1(numstr), '')
+            \ ->substitute('#2', tuskk#converters#numconv2(numstr), '')
+            \ ->substitute('#3', tuskk#converters#numconv3(numstr), '')
+            \ ->substitute('#5', tuskk#converters#numconv5(numstr), '')
+            \ ->substitute('#8', tuskk#converters#numconv8(numstr), '')
+            \ ->substitute('#9', tuskk#converters#numconv9(numstr), '')
     endfor
     call add (num_henkan_list, item)
   endfor
