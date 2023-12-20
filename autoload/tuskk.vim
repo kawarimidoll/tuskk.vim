@@ -1,4 +1,8 @@
-source ./utils.vim
+" let s:sid_functions = {}
+function s:source(filename) abort
+  let path = $"{expand('<script>:p:h')}/{a:filename}.vim"
+  execute 'source' path
+endfunction
 
 " vim 2146以前ではE340が出るため使用不可 https://github.com/vim/vim/issues/13609
 if !exists('*keytrans') || exists(':defer') != 2 || (!has('nvim') && !has('patch-9.0.2146'))
@@ -9,16 +13,16 @@ elseif !executable('rg')
   finish
 endif
 
-source ./inline_mark.vim
-source ./google_cgi.vim
-source ./converters.vim
-source ./opts.vim
-source ./user_jisyo.vim
-source ./store.vim
-source ./phase.vim
-source ./henkan_list.vim
-source ./mode.vim
-source ./cmd_buf.vim
+call s:source('inline_mark')
+call s:source('google_cgi')
+call s:source('converters')
+call s:source('opts')
+call s:source('user_jisyo')
+call s:source('store')
+call s:source('phase')
+call s:source('henkan_list')
+call s:source('mode')
+call s:source('cmd_buf')
 
 function s:mark_put(target, hlname) abort
   call inline_mark#put_text(a:target, store#get(a:target), a:hlname)

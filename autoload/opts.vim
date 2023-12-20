@@ -1,5 +1,6 @@
 function opts#default_kana_table() abort
-  return json_decode(join(readfile('./kana_table.json'), "\n"))
+  let path = expand('<script>:p:h:h') .. '/resources/kana_table.json'
+  return json_decode(join(readfile(path), "\n"))
 endfunction
 
 function opts#default_auto_henkan_characters() abort
