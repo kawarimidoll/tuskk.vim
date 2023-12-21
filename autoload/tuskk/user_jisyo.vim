@@ -1,4 +1,4 @@
-function user_jisyo#add_word(context) abort
+function s:export_add_word(context) abort
   let s:p1 = a:context.pos
   let s:p2 = getpos('.')[1:2]
   let s:opts = {'okuri': a:context.okuri, 'exclusive': !a:context.is_trailing}
@@ -17,13 +17,13 @@ function user_jisyo#add_word(context) abort
     normal! gg
     execute $'/okuri-{nasi}'
   else
-    call user_jisyo#open(target)
+    call tuskk#user_jisyo#open(target)
   endif
 
   call feedkeys($"\<c-o>o{yomi} //\<c-g>U\<left>\<cmd>call tuskk#enable()\<cr>", 'n')
 endfunction
 
-function user_jisyo#open(target = '') abort
+function tuskk#user_jisyo#open(target = '') abort
   let jump_line = ''
   if a:target ==# 'nasi'
     let jump_line = '+/okuri-nasi'

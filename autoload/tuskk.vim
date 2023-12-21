@@ -27,7 +27,6 @@ function s:f(funcname, ...) abort
   return call(s:sid_functions[a:funcname], a:000)
 endfunction
 
-call s:import('user_jisyo')
 call s:import('phase')
 call s:import('henkan_list')
 call s:import('cmd_buf')
@@ -155,6 +154,7 @@ function tuskk#init(opts = {}) abort
   defer tuskk#utils#do_user('tuskk_initialize_post')
   call s:import('tuskk/opts')
   call s:import('tuskk/store')
+  call s:import('tuskk/user_jisyo')
 
   try
     call s:f('opts#parse', a:opts)
@@ -250,7 +250,7 @@ function s:on_kakutei_special(user_data) abort
   endif
 
   if special ==# 'new_word'
-    call user_jisyo#add_word(context)
+    call s:f('user_jisyo#add_word', context)
     return
   endif
 
