@@ -107,10 +107,6 @@ function tuskk#utils#hasunprintable(str) abort
   return a:str !~ '\p' || a:str =~ "\<bs>"
 endfunction
 
-function tuskk#utils#ifempty(item, fallback) abort
-  return a:item->empty() ? a:fallback : a:item
-endfunction
-
 function tuskk#utils#strsplit(str) abort
   " 普通にsplitすると<bs>など<80>k?のコードを持つ文字を正しく切り取れないので対応
   let chars = split(a:str, '\zs')
@@ -143,9 +139,7 @@ endfunction
 " https://github.com/lambdalisue/gin.vim/blob/937cc4dd3b5b1fbc90a21a8b8318b1c9d2d7c2cd/autoload/gin/internal/util.vim
 let s:debounce_timers = {}
 function tuskk#utils#debounce(fn, wait, args = [], timer_name = '') abort
-  let timer_name = a:timer_name !=# '' ? a:timer_name
-        \ : type(a:fn) == v:t_string ? a:fn
-        \ : string(a:fn)
+  let timer_name = a:timer_name ?? string(a:fn)
   call get(s:debounce_timers, timer_name, 0)->timer_stop()
   " workaround: neovimでなぜかa:argsが効かないため変数化
   let args = a:args

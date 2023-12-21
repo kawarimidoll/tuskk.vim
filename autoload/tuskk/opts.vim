@@ -140,7 +140,7 @@ function s:export_parse(opts) abort
     endif
 
     let jisyo.mark = get(jisyo, 'mark', '')
-    let encoding = get(jisyo, 'encoding', '') ==# '' ? 'auto' : jisyo.encoding
+    let encoding = get(jisyo, 'encoding', '') ?? 'auto'
     let jisyo.grep_cmd = $'{rg_cmd} --encoding {encoding} --regexp "^:q:" {jisyo.path}'
   endfor
 

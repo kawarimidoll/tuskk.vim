@@ -110,7 +110,7 @@ function tuskk#enable() abort
     endif
     let current_map = maparg(key, 'i', 0, 1)
     let k = keytrans(key)
-    call add(s:keys_to_remaps, empty(current_map) ? k : current_map)
+    call add(s:keys_to_remaps, current_map ?? k)
     execute $"inoremap {k} <cmd>call {sid}ins('{keytrans(k)}', {val})<cr>"
   endfor
 
@@ -134,7 +134,7 @@ function tuskk#disable(escape = v:false) abort
 
   autocmd! tuskk_inner_augroup
 
-  let after_feed = (s:f('store#is_present', 'kouho') ? s:f('store#get', 'kouho') : s:f('store#get', 'machi'))
+  let after_feed = (s:f('store#get', 'kouho') ?? s:f('store#get', 'machi'))
         \ .. s:f('store#get', 'okuri') .. s:f('store#get', 'hanpa')
 
   for k in s:keys_to_remaps
@@ -391,7 +391,7 @@ function s:suggest_start() abort
     return
   endif
   let machi_pos = s:f('store#getpos', 'machi')
-  let col = machi_pos->empty() ? col('.') : machi_pos[1]
+  let col = get(machi_pos, 1, 0) ?? col('.')
   call complete(col, comp_list)
 endfunction
 
@@ -509,14 +509,14 @@ endfunction
 
 function s:kakutei(fallback_key) abort
   call s:phase_set('hanpa', 'kakutei')
-  let feed = (s:f('store#is_present', 'kouho') ? s:f('store#get', 'kouho') : s:f('store#get', 'machi')) .. s:f('store#get', 'okuri')
+  let feed = (s:f('store#get', 'kouho') ?? s:f('store#get', 'machi')) .. s:f('store#get', 'okuri')
   call s:f('store#clear', 'kouho')
   call s:f('store#clear', 'machi')
   call s:f('store#clear', 'okuri')
   if tuskk#mode#is_start_sticky()
     call tuskk#mode#set('hira')
   endif
-  return feed ==# '' ? tuskk#utils#trans_special_key(a:fallback_key) : feed
+  return feed ?? tuskk#utils#trans_special_key(a:fallback_key)
 endfunction
 
 function s:henkan(fallback_key) abort
@@ -552,9 +552,9 @@ function s:ins(key, with_sticky = v:false) abort
 
   let spec = s:get_spec(a:key)
 
-  let func = get(spec, 'func', '')
-  let mode = get(spec, 'mode', '')
-  if s:is_tuskk_completed() && mode ==# '' && index(['kakutei', 'backspace', 'henkan'], func) < 0
+  if s:is_tuskk_completed()
+        \ && get(spec, 'mode', '') ==# ''
+        \ && index(['kakutei', 'backspace', 'henkan'], get(spec, 'func', '')) < 0
     let feed = s:handle_spec({ 'string': '', 'store': '', 'key': '', 'func': 'kakutei' })
     call s:feed(tuskk#utils#trans_special_key(feed) .. $"\<cmd>call {expand('<SID>')}ins('{a:key}')\<cr>")
     return
@@ -729,18 +729,18 @@ function s:display_marks(...) abort
   endif
   if s:f('store#is_present', 'kouho')
     call add(mark_process_list, ['clear', 'machi'])
-    let hlname = tuskk#utils#ifempty(tuskk#opts#get('highlight_kouho'), hlname)
+    let hlname = tuskk#opts#get('highlight_kouho') ?? hlname
     call add(mark_process_list, ['put', 'kouho', hlname])
   elseif s:f('store#is_present', 'machi')
     call add(mark_process_list, ['clear', 'kouho'])
-    let hlname = tuskk#utils#ifempty(tuskk#opts#get('highlight_machi'), hlname)
+    let hlname = tuskk#opts#get('highlight_machi') ?? hlname
     call add(mark_process_list, ['put', 'machi', hlname])
   else
     call add(mark_process_list, ['clear', 'kouho'])
     call add(mark_process_list, ['clear', 'machi'])
   endif
   if s:phase_is('okuri')
-    let hlname = tuskk#utils#ifempty(tuskk#opts#get('highlight_okuri'), hlname)
+    let hlname = tuskk#opts#get('highlight_okuri') ?? hlname
   endif
   if s:f('store#is_present', 'okuri')
     call add(mark_process_list, ['put', 'okuri', hlname])
