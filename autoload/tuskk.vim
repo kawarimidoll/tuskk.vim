@@ -1,9 +1,3 @@
-" let s:sid_functions = {}
-function s:source(filename) abort
-  let path = $"{expand('<script>:p:h')}/{a:filename}.vim"
-  execute 'source' path
-endfunction
-
 " vim 2146以前ではE340が出るため使用不可 https://github.com/vim/vim/issues/13609
 if !exists('*keytrans') || exists(':defer') != 2 || (!has('nvim') && !has('patch-9.0.2146'))
   call tuskk#utils#echoerr('このバージョンの' .. v:progname .. 'はサポートしていません')
@@ -13,14 +7,34 @@ elseif !executable('rg')
   finish
 endif
 
-call s:source('inline_mark')
-call s:source('opts')
-call s:source('user_jisyo')
-call s:source('store')
-call s:source('phase')
-call s:source('henkan_list')
-call s:source('mode')
-call s:source('cmd_buf')
+" function import system
+let s:sid_functions = {}
+function s:import(filename) abort
+  let path = $"{expand('<script>:p:h')}/{a:filename}.vim"
+  execute 'source' path
+  let sid = getscriptinfo({'name': path})[0].sid
+  let functions = getscriptinfo({'sid': sid})[0].functions
+  let filename = substitute(a:filename, '.*/', '', '')
+  let prefix = '^<SNR>\d\+_export_'
+  for funcname in functions
+    if funcname =~ prefix
+      let keyname = filename .. substitute(funcname, prefix, '#', '')
+      let s:sid_functions[keyname] = funcname
+    endif
+  endfor
+endfunction
+function s:f(funcname, ...) abort
+  return call(s:sid_functions[a:funcname], a:000)
+endfunction
+
+call s:import('inline_mark')
+call s:import('opts')
+call s:import('user_jisyo')
+call s:import('store')
+call s:import('phase')
+call s:import('henkan_list')
+call s:import('mode')
+call s:import('cmd_buf')
 
 function s:mark_put(target, hlname) abort
   call inline_mark#put_text(a:target, store#get(a:target), a:hlname)
