@@ -77,8 +77,8 @@ if has('nvim')
 
   function s:v_mark_clear(name = '') abort
     if a:name ==# ''
-      for k in s:ns_dict->keys()
-        call nvim_buf_clear_namespace(0, k, 0, -1)
+      for v in s:ns_dict->values()
+        call nvim_buf_clear_namespace(0, v, 0, -1)
       endfor
       let s:ns_dict = {}
       return
