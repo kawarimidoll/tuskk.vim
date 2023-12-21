@@ -27,7 +27,6 @@ function s:f(funcname, ...) abort
   return call(s:sid_functions[a:funcname], a:000)
 endfunction
 
-call s:import('inline_mark')
 call s:import('user_jisyo')
 call s:import('store')
 call s:import('phase')
