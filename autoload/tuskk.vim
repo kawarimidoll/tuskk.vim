@@ -154,8 +154,7 @@ function tuskk#toggle() abort
 endfunction
 
 function tuskk#init(opts = {}) abort
-  " 普通に使うとconvertersがautoloadされないためここを利用して呼び出しておく
-  call tuskk#utils#do_user(tuskk#converters#as_is('tuskk_initialize_pre'))
+  call tuskk#utils#do_user('tuskk_initialize_pre')
   defer tuskk#utils#do_user('tuskk_initialize_post')
   call s:import('tuskk/opts')
 

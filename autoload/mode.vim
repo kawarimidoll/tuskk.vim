@@ -23,7 +23,7 @@ function mode#is_direct_v2(char) abort
 endfunction
 
 function mode#convert(...) abort
-  return call(funcref(s:current_mode.conv), a:000)
+  return call(s:current_mode.conv, a:000)
 endfunction
 
 function mode#clear() abort
