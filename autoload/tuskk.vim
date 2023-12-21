@@ -28,7 +28,6 @@ function s:f(funcname, ...) abort
 endfunction
 
 call s:import('user_jisyo')
-call s:import('store')
 call s:import('phase')
 call s:import('henkan_list')
 call s:import('mode')
@@ -46,8 +45,8 @@ function s:is_tuskk_completed() abort
 endfunction
 
 function tuskk#clear_state(set_reason = 'clear_state') abort
-  call store#hide()
-  call store#clear()
+  call s:f('store#hide')
+  call s:f('store#clear')
   call phase#set('hanpa', a:set_reason)
   let s:latest_henkan_item = {}
   let s:last_machi = ''
@@ -115,8 +114,8 @@ function tuskk#disable(escape = v:false) abort
 
   autocmd! tuskk_inner_augroup
 
-  let after_feed = (store#is_present('kouho') ? store#get('kouho') : store#get('machi'))
-        \ .. store#get('okuri') .. store#get('hanpa')
+  let after_feed = (s:f('store#is_present', 'kouho') ? s:f('store#get', 'kouho') : s:f('store#get', 'machi'))
+        \ .. s:f('store#get', 'okuri') .. s:f('store#get', 'hanpa')
 
   for k in s:keys_to_remaps
     try
@@ -156,6 +155,7 @@ function tuskk#init(opts = {}) abort
   call tuskk#utils#do_user('tuskk_initialize_pre')
   defer tuskk#utils#do_user('tuskk_initialize_post')
   call s:import('tuskk/opts')
+  call s:import('tuskk/store')
 
   try
     call s:f('opts#parse', a:opts)
@@ -191,29 +191,29 @@ function tuskk#henkan_buffer(p1, p2, opts = {}) abort
   call cursor(tuskk#utils#compare_pos(a:p1, a:p2) > 0 ? a:p2 : a:p1)
 
   let stay = get(a:opts, 'stay', v:false)
-  let s:henkan_buffer_context = { 'machi': machi, 'okuri': okuri, 'stay': stay }
+  let s:fenkan_buffer_context = { 'machi': machi, 'okuri': okuri, 'stay': stay }
   let feed = "\<esc>"
   let feed ..= exclusive ? 'i' : 'a'
   let feed ..= $"\<cmd>call {expand('<SID>')}henkan_buffer_2()\<cr>"
   call s:feed(feed)
 endfunction
 " feedkeysを挟んだ処理の前後関係を保証するため、関数を複数に分ける
-function s:henkan_buffer_2() abort
-  let target = s:henkan_buffer_context.machi .. s:henkan_buffer_context.okuri
+function s:fenkan_buffer_2() abort
+  let target = s:fenkan_buffer_context.machi .. s:fenkan_buffer_context.okuri
   let feed = repeat("\<bs>", strcharlen(target))
   let feed ..= $"\<cmd>call tuskk#enable()\<cr>\<cmd>call {expand('<SID>')}henkan_buffer_3()\<cr>"
   call s:feed(feed)
 endfunction
-function s:henkan_buffer_3() abort
-  call store#set('machi', s:henkan_buffer_context.machi)
-  call store#set('okuri', s:henkan_buffer_context.okuri)
-  let next_phase = s:henkan_buffer_context.okuri ==# '' ? 'machi' : 'okuri'
+function s:fenkan_buffer_3() abort
+  call s:f('store#set', 'machi', s:fenkan_buffer_context.machi)
+  call s:f('store#set', 'okuri', s:fenkan_buffer_context.okuri)
+  let next_phase = s:fenkan_buffer_context.okuri ==# '' ? 'machi' : 'okuri'
   call phase#set(next_phase, 'henkan_buffer')
   call s:display_marks()
-  if s:henkan_buffer_context.stay
+  if s:fenkan_buffer_context.stay
     return
   endif
-  let feed = s:henkan_start()
+  let feed = s:fenkan_start()
   call s:feed(feed)
 endfunction
 " xnoremap K <cmd>call tuskk#henkan_buffer(getpos('.')[1:2], getpos('v')[1:2], {'okuri':'り'})<cr>
@@ -274,7 +274,7 @@ function s:on_complete_changed(event) abort
   let kouho = empty(s:latest_henkan_item) ? ''
         \ : get(user_data, 'skip_put', v:false) ? user_data.yomi
         \ : get(s:latest_henkan_item, 'abbr', '')
-  call store#set('kouho', kouho)
+  call s:f('store#set', 'kouho', kouho)
   call s:display_marks()
 endfunction
 
@@ -300,7 +300,7 @@ function s:get_spec(key) abort
   " その他：関数など func / mode / expr
   let spec = { 'string': '', 'store': '', 'key': a:key }
 
-  let current = store#get('hanpa') .. a:key
+  let current = s:f('store#get', 'hanpa') .. a:key
   if has_key(tuskk#opts#get('kana_table'), current)
     let spec.reason = 'combined:found'
     " s:store.hanpaの残存文字と合わせて完成した場合
@@ -321,7 +321,7 @@ function s:get_spec(key) abort
 
   " ここまでで値がヒットせず、put_hanpaがfalseなら、
   " storeに残っていた半端な文字をバッファに載せずに消す
-  let spec.string = tuskk#opts#get('put_hanpa') ? store#get('hanpa') : ''
+  let spec.string = tuskk#opts#get('put_hanpa') ? s:f('store#get', 'hanpa') : ''
 
   if has_key(tuskk#opts#get('kana_table'), a:key)
     let spec.reason = 'alone:found'
@@ -331,7 +331,7 @@ function s:get_spec(key) abort
       " 値が辞書ならput_hanpaに関らずstringは削除
       " storeに値を保存する
       let spec.string = ''
-      let spec.store = store#get('hanpa')
+      let spec.store = s:f('store#get', 'hanpa')
     else
       let [kana, roma; _rest] = tuskk#opts#get('kana_table')[a:key]->split('\A*\zs') + ['']
       let spec.string ..= kana
@@ -353,9 +353,9 @@ function s:get_spec(key) abort
   return spec
 endfunction
 
-function s:henkan_fuzzy() abort
-  let exact_match = store#get('machi')->strcharlen() < tuskk#opts#get('suggest_prefix_match_minimum')
-  call henkan_list#update_fuzzy_v2(store#get('machi'), exact_match)
+function s:fenkan_fuzzy() abort
+  let exact_match = s:f('store#get', 'machi')->strcharlen() < tuskk#opts#get('suggest_prefix_match_minimum')
+  call henkan_list#update_fuzzy_v2(s:f('store#get', 'machi'), exact_match)
   let comp_list = copy(henkan_list#get_fuzzy())
   if mode() !=# 'i'
     " タイマー実行しており、さらに変換リストの構築に時間がかかるため、
@@ -368,14 +368,14 @@ function s:henkan_fuzzy() abort
     call s:feed("\<c-e>")
     return
   endif
-  let machi_pos = store#getpos('machi')
+  let machi_pos = s:f('store#getpos', 'machi')
   let col = machi_pos->empty() ? col('.') : machi_pos[1]
   call complete(col, comp_list)
 endfunction
 
 function s:make_special_henkan_item(opts) abort
-  let yomi = get(a:opts, 'yomi', store#get('machi'))
-  let okuri = get(a:opts, 'okuri', store#get('okuri'))
+  let yomi = get(a:opts, 'yomi', s:f('store#get', 'machi'))
+  let okuri = get(a:opts, 'okuri', s:f('store#get', 'okuri'))
   let pos = getpos('.')[1:2]
   let menu = get(a:opts, 'menu', '')
 
@@ -400,13 +400,13 @@ function s:make_special_henkan_item(opts) abort
         \ }
 endfunction
 
-function s:henkan_start() abort
-  call henkan_list#update_manual_v2(store#get('machi'), store#get('okuri'))
+function s:fenkan_start() abort
+  call henkan_list#update_manual_v2(s:f('store#get', 'machi'), s:f('store#get', 'okuri'))
   let comp_list = copy(henkan_list#get())
   let list_len = len(comp_list)
 
   if list_len == 1 && tuskk#opts#get('kakutei_unique')
-    call store#clear()
+    call s:f('store#clear', )
     call phase#set('hanpa', 'kakutei_unique')
     return comp_list[0].abbr
   endif
@@ -428,15 +428,15 @@ function s:henkan_start() abort
 endfunction
 
 function s:zengo(key) abort
-  if store#is_present('hanpa')
+  if s:f('store#is_present', 'hanpa')
     " ひらがなになりきれていない文字が残っている場合はスキップ
     return ''
   endif
   if phase#is('okuri')
   " nop
   elseif phase#is('machi')
-    call store#push('machi', a:key)
-    let feed = s:henkan('')
+    call s:f('store#push', 'machi', a:key)
+    let feed = s:fenkan('')
   else
     call phase#set('machi', 'zengo: start machi')
     let feed = a:key
@@ -445,13 +445,13 @@ function s:zengo(key) abort
 endfunction
 
 function s:sticky() abort
-  if store#is_present('hanpa')
+  if s:f('store#is_present', 'hanpa')
     " ひらがなになりきれていない文字が残っている場合はスキップ
     return ''
   endif
 
   if phase#is('machi')
-    if store#is_present('machi')
+    if s:f('store#is_present', 'machi')
       call phase#set('okuri', 'sticky: start okuri')
     endif
   elseif phase#is('okuri')
@@ -464,16 +464,16 @@ endfunction
 
 function s:backspace() abort
   let feed = ''
-  if store#is_present('hanpa')
-    call store#pop('hanpa')
-  elseif store#is_present('okuri')
-    call store#pop('okuri')
-    if store#is_blank('okuri')
+  if s:f('store#is_present', 'hanpa')
+    call s:f('store#pop', 'hanpa')
+  elseif s:f('store#is_present', 'okuri')
+    call s:f('store#pop', 'okuri')
+    if s:f('store#is_blank', 'okuri')
       call phase#set('machi', 'backspace: blank okuri')
     endif
-  elseif store#is_present('machi')
-    call store#pop('machi')
-    if store#is_blank('machi')
+  elseif s:f('store#is_present', 'machi')
+    call s:f('store#pop', 'machi')
+    if s:f('store#is_blank', 'machi')
       call phase#set('hanpa', 'backspace: blank machi')
       if mode#is_start_sticky()
         call mode#set_anyway('hira')
@@ -487,32 +487,32 @@ endfunction
 
 function s:kakutei(fallback_key) abort
   call phase#set('hanpa', 'kakutei')
-  let feed = (store#is_present('kouho') ? store#get('kouho') : store#get('machi')) .. store#get('okuri')
-  call store#clear('kouho')
-  call store#clear('machi')
-  call store#clear('okuri')
+  let feed = (s:f('store#is_present', 'kouho') ? s:f('store#get', 'kouho') : s:f('store#get', 'machi')) .. s:f('store#get', 'okuri')
+  call s:f('store#clear', 'kouho')
+  call s:f('store#clear', 'machi')
+  call s:f('store#clear', 'okuri')
   if mode#is_start_sticky()
     call mode#set_anyway('hira')
   endif
   return feed ==# '' ? tuskk#utils#trans_special_key(a:fallback_key) : feed
 endfunction
 
-function s:henkan(fallback_key) abort
+function s:fenkan(fallback_key) abort
   let feed = ''
-  if store#is_present('okuri')
+  if s:f('store#is_present', 'okuri')
     return "\<c-n>"
-  elseif store#is_present('machi')
+  elseif s:f('store#is_present', 'machi')
     if s:phase_kouho
       return "\<c-n>"
     endif
-    if tuskk#opts#get('trailing_n') && store#get('hanpa') ==# 'n' && store#get('machi')->slice(-1) != 'ん'
-      call store#push('machi', 'ん')
+    if tuskk#opts#get('trailing_n') && s:f('store#get', 'hanpa') ==# 'n' && s:f('store#get', 'machi')->slice(-1) != 'ん'
+      call s:f('store#push', 'machi', 'ん')
     endif
-    let feed = s:henkan_start()
+    let feed = s:fenkan_start()
   else
-    let feed = store#get('hanpa') .. tuskk#utils#trans_special_key(a:fallback_key)
+    let feed = s:f('store#get', 'hanpa') .. tuskk#utils#trans_special_key(a:fallback_key)
   endif
-  call store#clear('hanpa')
+  call s:f('store#clear', 'hanpa')
   return feed
 endfunction
 
@@ -520,7 +520,7 @@ function s:ins(key, with_sticky = v:false) abort
   call phase#forget()
   if a:with_sticky && !mode#is_direct_v2(a:key)
     " TODO direct modeの変換候補を選択した状態で大文字を入力した場合の対処
-    let feed = s:handle_spec({ 'string': '', 'store': '', 'func': 'sticky' })
+    let feed = s:fandle_spec({ 'string': '', 'store': '', 'func': 'sticky' })
 
     let key = a:key->tolower()
     call s:feed(tuskk#utils#trans_special_key(feed) .. $"\<cmd>call {expand('<SID>')}ins('{key}')\<cr>")
@@ -532,17 +532,17 @@ function s:ins(key, with_sticky = v:false) abort
   let func = get(spec, 'func', '')
   let mode = get(spec, 'mode', '')
   if s:is_tuskk_completed() && mode ==# '' && index(['kakutei', 'backspace', 'henkan'], func) < 0
-    let feed = s:handle_spec({ 'string': '', 'store': '', 'key': '', 'func': 'kakutei' })
+    let feed = s:fandle_spec({ 'string': '', 'store': '', 'key': '', 'func': 'kakutei' })
     call s:feed(tuskk#utils#trans_special_key(feed) .. $"\<cmd>call {expand('<SID>')}ins('{a:key}')\<cr>")
     return
   endif
 
-  let feed = s:handle_spec(spec)
+  let feed = s:fandle_spec(spec)
 
-  if phase#is('machi') && s:last_machi != store#get('machi') && tuskk#opts#get('suggest_wait_ms') >= 0
-    call tuskk#utils#debounce(funcref('s:henkan_fuzzy'), tuskk#opts#get('suggest_wait_ms'))
+  if phase#is('machi') && s:last_machi != s:f('store#get', 'machi') && tuskk#opts#get('suggest_wait_ms') >= 0
+    call tuskk#utils#debounce(funcref('s:fenkan_fuzzy'), tuskk#opts#get('suggest_wait_ms'))
   endif
-  let s:last_machi = store#get('machi')
+  let s:last_machi = s:f('store#get', 'machi')
 
   if feed ==# ''
     call s:display_marks()
@@ -554,14 +554,14 @@ function s:ins(key, with_sticky = v:false) abort
   endif
 endfunction
 
-function s:handle_spec(args) abort
+function s:fandle_spec(args) abort
   let spec = a:args
 
   if !s:is_tuskk_completed() && mode#is_direct_v2(get(spec, 'key', ''))
     let spec = { 'string': spec.key, 'store': '', 'key': spec.key }
   endif
 
-  call store#set('hanpa', spec.store)
+  call s:f('store#set', 'hanpa', spec.store)
 
   " kouho状態に入る(継続する)かのフラグ
   let next_kouho = v:false
@@ -594,10 +594,10 @@ function s:handle_spec(args) abort
           call timer_start(0, {->s:on_kakutei_special(user_data)})
         endif
       endif
-      let feed = s:kakutei(spec.key) .. store#get('hanpa')
-      call store#clear()
+      let feed = s:kakutei(spec.key) .. s:f('store#get', 'hanpa')
+      call s:f('store#clear', )
     elseif spec.func ==# 'henkan'
-      let feed = s:henkan(spec.key)
+      let feed = s:fenkan(spec.key)
       let next_kouho = v:true
     elseif spec.func ==# 'zengo'
       if s:is_tuskk_completed()
@@ -607,24 +607,24 @@ function s:handle_spec(args) abort
         let feed = s:zengo(spec.key)
       endif
     elseif spec.func ==# 'extend'
-      call store#hide()
+      call s:f('store#hide', )
       let char = tuskk#utils#leftchar()
       " 現状、ひらがなのみ対応
       if char =~ '^[ぁ-ゖ]$'
-        call store#unshift('machi', char)
+        call s:f('store#unshift', 'machi', char)
         let feed = "\<bs>"
         if phase#is('hanpa')
           call phase#set('machi', 'extend: start machi')
         endif
       endif
     elseif spec.func ==# 'shrink'
-      call store#hide()
-      if store#is_present('machi')
-        let char = store#shift('machi')
+      call s:f('store#hide', )
+      if s:f('store#is_present', 'machi')
+        let char = s:f('store#shift', 'machi')
         " machi状態のままバッファを変更するため、bsを仕込む
         " (不可視文字を入れるとバッファを変更するようにしているため)
         let feed = char .. char .. "\<bs>"
-        if store#is_blank('machi')
+        if s:f('store#is_blank', 'machi')
           call phase#set('hanpa', 'shrink: blank machi')
         endif
       endif
@@ -632,9 +632,9 @@ function s:handle_spec(args) abort
       call tuskk#utils#echoerr('定義されていないfuncが使われました')
     endif
   elseif has_key(spec, 'mode')
-    if store#is_present('okuri')
+    if s:f('store#is_present', 'okuri')
     " nop
-    elseif store#is_present('machi')
+    elseif s:f('store#is_present', 'machi')
       if s:phase_kouho
       " nop
       else
@@ -676,16 +676,16 @@ function s:handle_spec(args) abort
       " ** EXPERIMENTAL **
       " machi状態でauto_henkan_charactersに含まれる文字が入力されたら
       " それをokuriに指定して送り変換を開始する
-      call store#push('okuri', tuskk#utils#lastchar(feed))
-      return s:henkan_start()
+      call s:f('store#push', 'okuri', tuskk#utils#lastchar(feed))
+      return s:fenkan_start()
     else
-      call store#push('machi', feed)
+      call s:f('store#push', 'machi', feed)
     endif
   elseif phase#is('okuri')
-    call store#push('okuri', feed)
+    call s:f('store#push', 'okuri', feed)
 
-    if store#is_blank('hanpa')
-      return s:henkan_start()
+    if s:f('store#is_blank', 'hanpa')
+      return s:fenkan_start()
     endif
   endif
   return ''
@@ -704,11 +704,11 @@ function s:display_marks(...) abort
   if phase#is('machi')
     let hlname = tuskk#opts#get('highlight_machi')
   endif
-  if store#is_present('kouho')
+  if s:f('store#is_present', 'kouho')
     call add(mark_process_list, ['clear', 'machi'])
     let hlname = tuskk#utils#ifempty(tuskk#opts#get('highlight_kouho'), hlname)
     call add(mark_process_list, ['put', 'kouho', hlname])
-  elseif store#is_present('machi')
+  elseif s:f('store#is_present', 'machi')
     call add(mark_process_list, ['clear', 'kouho'])
     let hlname = tuskk#utils#ifempty(tuskk#opts#get('highlight_machi'), hlname)
     call add(mark_process_list, ['put', 'machi', hlname])
@@ -719,12 +719,12 @@ function s:display_marks(...) abort
   if phase#is('okuri')
     let hlname = tuskk#utils#ifempty(tuskk#opts#get('highlight_okuri'), hlname)
   endif
-  if store#is_present('okuri')
+  if s:f('store#is_present', 'okuri')
     call add(mark_process_list, ['put', 'okuri', hlname])
   else
     call add(mark_process_list, ['clear', 'okuri'])
   endif
-  if store#is_present('hanpa')
+  if s:f('store#is_present', 'hanpa')
     call add(mark_process_list, ['put', 'hanpa', hlname])
   else
     call add(mark_process_list, ['clear', 'hanpa'])
@@ -737,9 +737,9 @@ function s:display_marks(...) abort
 
   for process in mark_process_list
     if process[0] ==# 'clear'
-      call store#hide(process[1])
+      call s:f('store#hide', process[1])
     else
-      call store#show(process[1], process[2])
+      call s:f('store#show', process[1], process[2])
     endif
   endfor
 endfunction

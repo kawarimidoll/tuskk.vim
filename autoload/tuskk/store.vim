@@ -1,66 +1,66 @@
 let s:store = { 'hanpa': '', 'choku': '', 'machi': '', 'okuri': '', 'kouho': '' }
 
-function store#set(target, str) abort
+function s:export_set(target, str) abort
   let s:store[a:target] = a:str
 endfunction
 
-function store#get(target) abort
+function s:export_get(target) abort
   return s:store[a:target]
 endfunction
 
-function store#clear(target = '') abort
+function s:export_clear(target = '') abort
   if a:target !=# ''
-    call store#set(a:target, '')
+    call s:export_set(a:target, '')
     return
   endif
   for t in keys(s:store)
-    call store#set(t, '')
+    call s:export_set(t, '')
   endfor
 endfunction
 
-function store#push(target, str) abort
-  call store#set(a:target, store#get(a:target) .. a:str)
+function s:export_push(target, str) abort
+  call s:export_set(a:target, s:export_get(a:target) .. a:str)
 endfunction
 
-function store#pop(target) abort
-  let char = store#get(a:target)->tuskk#utils#lastchar()
-  call store#set(a:target, store#get(a:target)->substitute('.$', '', ''))
+function s:export_pop(target) abort
+  let char = s:export_get(a:target)->tuskk#utils#lastchar()
+  call s:export_set(a:target, s:export_get(a:target)->substitute('.$', '', ''))
   return char
 endfunction
 
-function store#unshift(target, str) abort
-  call store#set(a:target, a:str .. store#get(a:target))
+function s:export_unshift(target, str) abort
+  call s:export_set(a:target, a:str .. s:export_get(a:target))
 endfunction
 
-function store#shift(target) abort
-  let char = store#get(a:target)->tuskk#utils#firstchar()
-  call store#set(a:target, store#get(a:target)->substitute('^.', '', ''))
+function s:export_shift(target) abort
+  let char = s:export_get(a:target)->tuskk#utils#firstchar()
+  call s:export_set(a:target, s:export_get(a:target)->substitute('^.', '', ''))
   return char
 endfunction
 
-function store#is_blank(target) abort
-  return store#get(a:target) ==# ''
+function s:export_is_blank(target) abort
+  return s:export_get(a:target) ==# ''
 endfunction
 
-function store#is_present(target) abort
-  return !store#is_blank(a:target)
+function s:export_is_present(target) abort
+  return !s:export_is_blank(a:target)
 endfunction
 
-function store#show(target, hlname) abort
+function s:export_show(target, hlname) abort
   let name = a:target
   let pos = s:v_mark_getpos(name)
   let [lnum, col] = pos ?? getcurpos('.')[1:2]
-  let text = store#get(name)
+  let text = s:export_get(name)
   let hl = a:hlname ?? 'Normal'
   call s:v_mark_clear(name)
   call s:v_mark_put(lnum, col, name, text, hl)
 endfunction
 
-function store#hide(target = '') abort
+function s:export_hide(target = '') abort
   call s:v_mark_clear(a:target)
 endfunction
 
-function store#getpos(target) abort
+function s:export_getpos(target) abort
   return s:v_mark_getpos(a:target)
 endfunction
 
