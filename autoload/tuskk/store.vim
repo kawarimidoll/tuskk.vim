@@ -77,7 +77,9 @@ if has('nvim')
 
   function s:v_mark_clear(name = '') abort
     if a:name ==# ''
-      call nvim_buf_clear_namespace(0, -1, 0, -1)
+      for k in s:ns_dict->keys()
+        call nvim_buf_clear_namespace(0, k, 0, -1)
+      endfor
       let s:ns_dict = {}
       return
     endif
@@ -112,7 +114,7 @@ if has('nvim')
           \   'virt_text': [[a:text, a:hl]],
           \   'virt_text_pos': 'inline',
           \ })
-          " \   'right_gravity': v:false
+    " \   'right_gravity': v:false
   endfunction
 else
   let s:prop_types = {}
