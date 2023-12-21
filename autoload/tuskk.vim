@@ -30,7 +30,6 @@ endfunction
 call s:import('user_jisyo')
 call s:import('phase')
 call s:import('henkan_list')
-call s:import('mode')
 call s:import('cmd_buf')
 
 function s:feed(str) abort
@@ -99,7 +98,7 @@ function tuskk#enable() abort
     set textwidth=0
   endif
 
-  call mode#clear()
+  call tuskk#mode#clear()
   call tuskk#clear_state('enable')
 
   let s:is_enable = v:true
@@ -134,7 +133,7 @@ function tuskk#disable(escape = v:false) abort
     unlet! s:save_textwidth
   endif
 
-  call mode#clear()
+  call tuskk#mode#clear()
   call tuskk#clear_state('disable')
 
   let s:is_enable = v:false
@@ -475,8 +474,8 @@ function s:backspace() abort
     call s:f('store#pop', 'machi')
     if s:f('store#is_blank', 'machi')
       call phase#set('hanpa', 'backspace: blank machi')
-      if mode#is_start_sticky()
-        call mode#set_anyway('hira')
+      if tuskk#mode#is_start_sticky()
+        call tuskk#mode#set('hira')
       endif
     endif
   else
@@ -491,8 +490,8 @@ function s:kakutei(fallback_key) abort
   call s:f('store#clear', 'kouho')
   call s:f('store#clear', 'machi')
   call s:f('store#clear', 'okuri')
-  if mode#is_start_sticky()
-    call mode#set_anyway('hira')
+  if tuskk#mode#is_start_sticky()
+    call tuskk#mode#set('hira')
   endif
   return feed ==# '' ? tuskk#utils#trans_special_key(a:fallback_key) : feed
 endfunction
@@ -518,7 +517,8 @@ endfunction
 
 function s:ins(key, with_sticky = v:false) abort
   call phase#forget()
-  if a:with_sticky && !mode#is_direct_v2(a:key)
+  if a:with_sticky && !(a:key =~ '^[!-~]$' && tuskk#mode#is_direct())
+
     " TODO direct modeの変換候補を選択した状態で大文字を入力した場合の対処
     let feed = s:handle_spec({ 'string': '', 'store': '', 'func': 'sticky' })
 
@@ -557,7 +557,7 @@ endfunction
 function s:handle_spec(args) abort
   let spec = a:args
 
-  if !s:is_tuskk_completed() && mode#is_direct_v2(get(spec, 'key', ''))
+  if !s:is_tuskk_completed() && get(spec, 'key', '') =~ '^[!-~]$' && tuskk#mode#is_direct()
     let spec = { 'string': spec.key, 'store': '', 'key': spec.key }
   endif
 
@@ -638,12 +638,12 @@ function s:handle_spec(args) abort
       if s:phase_kouho
       " nop
       else
-        let feed ..= mode#convert_alt(spec.mode, s:kakutei(''))
+        let feed ..= tuskk#mode#convert_alt(spec.mode, s:kakutei(''))
         let allow_convert = v:false
       endif
     else
-      call mode#set_alt(spec.mode)
-      if mode#is_start_sticky()
+      call tuskk#mode#set_alt(spec.mode)
+      if tuskk#mode#is_start_sticky()
         let after_sticky = v:true
       endif
     endif
@@ -662,7 +662,7 @@ function s:handle_spec(args) abort
 
   if allow_convert
     " TODO カタカナモードでも変換できるようにする
-    let feed = mode#convert(feed)
+    let feed = tuskk#mode#convert(feed)
   endif
 
   if after_sticky
