@@ -1,11 +1,10 @@
-function cmd_buf#run(enable_func) abort
+function tuskk#cmd_buf#start() abort
   let cmdtype = getcmdtype()
   if ':/?' !~# cmdtype
     return
   endif
 
   let s:context = {
-        \ 'enable_func': a:enable_func,
         \ 'type': cmdtype,
         \ 'text': getcmdline(),
         \ 'col': getcmdpos(),
@@ -30,7 +29,7 @@ function cmd_buf#run(enable_func) abort
 
   augroup cmd_buf_augroup
     autocmd!
-    autocmd InsertEnter <buffer> ++once call call(s:context.enable_func, [])
+    autocmd InsertEnter <buffer> ++once call tuskk#enable()
     " 直接記述すると即座に発火してしまうのでInsertEnterでラップする
     " 入力を終了したり改行したりしたタイミングでコマンドラインに戻って反映する
     autocmd InsertEnter <buffer> ++once

@@ -29,7 +29,6 @@ endfunction
 
 call s:import('phase')
 call s:import('henkan_list')
-call s:import('cmd_buf')
 
 function s:feed(str) abort
   call feedkeys(a:str, 'ni')
@@ -155,6 +154,7 @@ function tuskk#init(opts = {}) abort
   call s:import('tuskk/opts')
   call s:import('tuskk/store')
   call s:import('tuskk/user_jisyo')
+  call s:import('tuskk/cmd_buf')
 
   try
     call s:f('opts#parse', a:opts)

@@ -1,7 +1,7 @@
 execute $"set runtimepath+={expand('<script>:p:h')}"
 
 inoremap <c-j> <cmd>call tuskk#toggle()<cr>
-" cnoremap <c-j> <cmd>call cmd_buf#run('tuskk#enable')<cr>
+cnoremap <c-j> <cmd>call tuskk#cmd_buf#start()<cr>
 
 inoremap <c-k> <cmd>imap<cr>
 
