@@ -49,10 +49,11 @@ endfunction
 function store#show(target, hlname) abort
   let name = a:target
   let pos = s:v_mark_getpos(name)
-  let [lnum, col] = empty(pos) ? getcurpos('.')[1:2] : pos
+  let [lnum, col] = pos ?? getcurpos('.')[1:2]
   let text = store#get(name)
-  let hl = a:hlname
-  call s:v_mark_put(lnum, col, { 'name': name, 'text': text, 'hl': hl })
+  let hl = a:hlname ?? 'Normal'
+  call s:v_mark_clear(name)
+  call s:v_mark_put(lnum, col, name, text, hl)
 endfunction
 
 function store#hide(target = '') abort
@@ -65,11 +66,9 @@ endfunction
 
 " 以下、virtual markの互換API
 
-" namespaceのキーまたはproptypeにファイルパスを使い、
-" 名前が他のプラグインとぶつかるのを防ぐ
-let s:file_name = expand('%:p')
+" namespaceのキーまたはproptypeの名前が他のプラグインとぶつかるのを防ぐ
 function s:v_mark_name(name) abort
-  return s:v_mark_getpos(a:target)
+  return $'tuskk#store#{a:name}'
 endfunction
 let s:default_hl = 'Normal'
 
@@ -80,15 +79,20 @@ if has('nvim')
     if a:name ==# ''
       call nvim_buf_clear_namespace(0, -1, 0, -1)
       let s:ns_dict = {}
-    elseif has_key(s:ns_dict, a:name)
-      call nvim_buf_clear_namespace(0, s:ns_dict[a:name], 0, -1)
-      call remove(s:ns_dict, a:name)
+      return
+    endif
+
+    let name = s:v_mark_name(a:name)
+    if has_key(s:ns_dict, name)
+      call nvim_buf_clear_namespace(0, s:ns_dict[name], 0, -1)
+      call remove(s:ns_dict, name)
     endif
   endfunction
 
   function s:v_mark_getpos(name) abort
-    if has_key(s:ns_dict, a:name)
-      let extmarks = nvim_buf_get_extmarks(0, s:ns_dict[a:name], 0, -1, {'limit':1})
+    let name = s:v_mark_name(a:name)
+    if has_key(s:ns_dict, name)
+      let extmarks = nvim_buf_get_extmarks(0, s:ns_dict[name], 0, -1, {'limit':1})
       " extmarks = [ [extmark_id, row, col], ... ]
       if !empty(extmarks) && len(extmarks[0]) == 3
         return [extmarks[0][1]+1, extmarks[0][2]+1]
@@ -97,18 +101,15 @@ if has('nvim')
     return []
   endfunction
 
-  function s:v_mark_put(lnum, col, opts = {}) abort
-    let hl = get(a:opts, 'hl', '')->empty() ? s:default_hl : a:opts.hl
-    let text = get(a:opts, 'text', '')
-    let name = get(a:opts, 'name', s:file_name)
+  function s:v_mark_put(lnum, col, name, text, hl) abort
+    let name = s:v_mark_name(a:name)
 
-    call s:v_mark_clear(name)
     let ns_id = nvim_create_namespace(name)
     let s:ns_dict[name] = ns_id
 
     " nvim_buf_set_extmarkは0-basedなので、1を引く
     call nvim_buf_set_extmark(0, ns_id, a:lnum - 1, a:col - 1, {
-          \   'virt_text': [[text, hl]],
+          \   'virt_text': [[a:text, a:hl]],
           \   'virt_text_pos': 'inline',
           \ })
           " \   'right_gravity': v:false
@@ -119,38 +120,40 @@ else
   function s:v_mark_clear(name = '') abort
     if a:name ==# ''
       for k in s:prop_types->keys()
-        call s:v_mark_clear(k)
+        call prop_remove({'type': k, 'all': v:true})
       endfor
-    elseif has_key(s:prop_types, a:name)
-      call prop_remove({'type': a:name, 'all': v:true})
+      return
+    endif
+
+    let name = s:v_mark_name(a:name)
+    if has_key(s:prop_types, name)
+      call prop_remove({'type': name, 'all': v:true})
     endif
   endfunction
 
   function s:v_mark_getpos(name) abort
-    if prop_type_get(a:name)->empty()
+    let name = s:v_mark_name(a:name)
+    if prop_type_get(name)->empty()
       return []
     endif
-    let prop = prop_find({'type': a:name, 'lnum': 1})
+    let prop = prop_find({'type': name, 'lnum': 1})
     return empty(prop) ? [] : [prop.lnum, prop.col]
   endfunction
 
-  function s:v_mark_put(lnum, col, opts = {}) abort
-    let hl = get(a:opts, 'hl', '')->empty() ? s:default_hl : a:opts.hl
-    let text = get(a:opts, 'text', '')
-    let name = get(a:opts, 'name', s:file_name)
+  function s:v_mark_put(lnum, col, name, text, hl) abort
+    let name = s:v_mark_name(a:name)
 
-    let opts = {'highlight': hl}
-    " let opts = {'highlight': hl, 'start_incl':1, 'end_incl':1}
-    if get(s:prop_types, name, {}) != opts
+    let prop_type_def = {'highlight': a:hl}
+    " let prop_type_def = {'highlight': a:hl, 'start_incl':1, 'end_incl':1}
+    if get(s:prop_types, name, {}) != prop_type_def
       if prop_type_get(name)->empty()
-        call prop_type_add(name, opts)
+        call prop_type_add(name, prop_type_def)
       else
-        call prop_type_change(name, opts)
+        call prop_type_change(name, prop_type_def)
       endif
-      let s:prop_types[name] = opts
+      let s:prop_types[name] = prop_type_def
     endif
-    call s:v_mark_clear(name)
 
-    call prop_add(a:lnum, a:col, { 'type': name, 'text': text })
+    call prop_add(a:lnum, a:col, { 'type': name, 'text': a:text })
   endfunction
 endif
