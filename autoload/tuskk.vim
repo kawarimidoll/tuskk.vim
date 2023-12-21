@@ -191,29 +191,29 @@ function tuskk#henkan_buffer(p1, p2, opts = {}) abort
   call cursor(tuskk#utils#compare_pos(a:p1, a:p2) > 0 ? a:p2 : a:p1)
 
   let stay = get(a:opts, 'stay', v:false)
-  let s:fenkan_buffer_context = { 'machi': machi, 'okuri': okuri, 'stay': stay }
+  let s:henkan_buffer_context = { 'machi': machi, 'okuri': okuri, 'stay': stay }
   let feed = "\<esc>"
   let feed ..= exclusive ? 'i' : 'a'
   let feed ..= $"\<cmd>call {expand('<SID>')}henkan_buffer_2()\<cr>"
   call s:feed(feed)
 endfunction
 " feedkeysを挟んだ処理の前後関係を保証するため、関数を複数に分ける
-function s:fenkan_buffer_2() abort
-  let target = s:fenkan_buffer_context.machi .. s:fenkan_buffer_context.okuri
+function s:henkan_buffer_2() abort
+  let target = s:henkan_buffer_context.machi .. s:henkan_buffer_context.okuri
   let feed = repeat("\<bs>", strcharlen(target))
   let feed ..= $"\<cmd>call tuskk#enable()\<cr>\<cmd>call {expand('<SID>')}henkan_buffer_3()\<cr>"
   call s:feed(feed)
 endfunction
-function s:fenkan_buffer_3() abort
-  call s:f('store#set', 'machi', s:fenkan_buffer_context.machi)
-  call s:f('store#set', 'okuri', s:fenkan_buffer_context.okuri)
-  let next_phase = s:fenkan_buffer_context.okuri ==# '' ? 'machi' : 'okuri'
+function s:henkan_buffer_3() abort
+  call s:f('store#set', 'machi', s:henkan_buffer_context.machi)
+  call s:f('store#set', 'okuri', s:henkan_buffer_context.okuri)
+  let next_phase = s:henkan_buffer_context.okuri ==# '' ? 'machi' : 'okuri'
   call phase#set(next_phase, 'henkan_buffer')
   call s:display_marks()
-  if s:fenkan_buffer_context.stay
+  if s:henkan_buffer_context.stay
     return
   endif
-  let feed = s:fenkan_start()
+  let feed = s:henkan_start()
   call s:feed(feed)
 endfunction
 " xnoremap K <cmd>call tuskk#henkan_buffer(getpos('.')[1:2], getpos('v')[1:2], {'okuri':'り'})<cr>
@@ -353,7 +353,7 @@ function s:get_spec(key) abort
   return spec
 endfunction
 
-function s:fenkan_fuzzy() abort
+function s:henkan_fuzzy() abort
   let exact_match = s:f('store#get', 'machi')->strcharlen() < tuskk#opts#get('suggest_prefix_match_minimum')
   call henkan_list#update_fuzzy_v2(s:f('store#get', 'machi'), exact_match)
   let comp_list = copy(henkan_list#get_fuzzy())
@@ -400,7 +400,7 @@ function s:make_special_henkan_item(opts) abort
         \ }
 endfunction
 
-function s:fenkan_start() abort
+function s:henkan_start() abort
   call henkan_list#update_manual_v2(s:f('store#get', 'machi'), s:f('store#get', 'okuri'))
   let comp_list = copy(henkan_list#get())
   let list_len = len(comp_list)
@@ -436,7 +436,7 @@ function s:zengo(key) abort
   " nop
   elseif phase#is('machi')
     call s:f('store#push', 'machi', a:key)
-    let feed = s:fenkan('')
+    let feed = s:henkan('')
   else
     call phase#set('machi', 'zengo: start machi')
     let feed = a:key
@@ -497,7 +497,7 @@ function s:kakutei(fallback_key) abort
   return feed ==# '' ? tuskk#utils#trans_special_key(a:fallback_key) : feed
 endfunction
 
-function s:fenkan(fallback_key) abort
+function s:henkan(fallback_key) abort
   let feed = ''
   if s:f('store#is_present', 'okuri')
     return "\<c-n>"
@@ -508,7 +508,7 @@ function s:fenkan(fallback_key) abort
     if tuskk#opts#get('trailing_n') && s:f('store#get', 'hanpa') ==# 'n' && s:f('store#get', 'machi')->slice(-1) != 'ん'
       call s:f('store#push', 'machi', 'ん')
     endif
-    let feed = s:fenkan_start()
+    let feed = s:henkan_start()
   else
     let feed = s:f('store#get', 'hanpa') .. tuskk#utils#trans_special_key(a:fallback_key)
   endif
@@ -520,7 +520,7 @@ function s:ins(key, with_sticky = v:false) abort
   call phase#forget()
   if a:with_sticky && !mode#is_direct_v2(a:key)
     " TODO direct modeの変換候補を選択した状態で大文字を入力した場合の対処
-    let feed = s:fandle_spec({ 'string': '', 'store': '', 'func': 'sticky' })
+    let feed = s:handle_spec({ 'string': '', 'store': '', 'func': 'sticky' })
 
     let key = a:key->tolower()
     call s:feed(tuskk#utils#trans_special_key(feed) .. $"\<cmd>call {expand('<SID>')}ins('{key}')\<cr>")
@@ -532,15 +532,15 @@ function s:ins(key, with_sticky = v:false) abort
   let func = get(spec, 'func', '')
   let mode = get(spec, 'mode', '')
   if s:is_tuskk_completed() && mode ==# '' && index(['kakutei', 'backspace', 'henkan'], func) < 0
-    let feed = s:fandle_spec({ 'string': '', 'store': '', 'key': '', 'func': 'kakutei' })
+    let feed = s:handle_spec({ 'string': '', 'store': '', 'key': '', 'func': 'kakutei' })
     call s:feed(tuskk#utils#trans_special_key(feed) .. $"\<cmd>call {expand('<SID>')}ins('{a:key}')\<cr>")
     return
   endif
 
-  let feed = s:fandle_spec(spec)
+  let feed = s:handle_spec(spec)
 
   if phase#is('machi') && s:last_machi != s:f('store#get', 'machi') && tuskk#opts#get('suggest_wait_ms') >= 0
-    call tuskk#utils#debounce(funcref('s:fenkan_fuzzy'), tuskk#opts#get('suggest_wait_ms'))
+    call tuskk#utils#debounce(funcref('s:henkan_fuzzy'), tuskk#opts#get('suggest_wait_ms'))
   endif
   let s:last_machi = s:f('store#get', 'machi')
 
@@ -554,7 +554,7 @@ function s:ins(key, with_sticky = v:false) abort
   endif
 endfunction
 
-function s:fandle_spec(args) abort
+function s:handle_spec(args) abort
   let spec = a:args
 
   if !s:is_tuskk_completed() && mode#is_direct_v2(get(spec, 'key', ''))
@@ -597,7 +597,7 @@ function s:fandle_spec(args) abort
       let feed = s:kakutei(spec.key) .. s:f('store#get', 'hanpa')
       call s:f('store#clear', )
     elseif spec.func ==# 'henkan'
-      let feed = s:fenkan(spec.key)
+      let feed = s:henkan(spec.key)
       let next_kouho = v:true
     elseif spec.func ==# 'zengo'
       if s:is_tuskk_completed()
@@ -677,7 +677,7 @@ function s:fandle_spec(args) abort
       " machi状態でauto_henkan_charactersに含まれる文字が入力されたら
       " それをokuriに指定して送り変換を開始する
       call s:f('store#push', 'okuri', tuskk#utils#lastchar(feed))
-      return s:fenkan_start()
+      return s:henkan_start()
     else
       call s:f('store#push', 'machi', feed)
     endif
@@ -685,7 +685,7 @@ function s:fandle_spec(args) abort
     call s:f('store#push', 'okuri', feed)
 
     if s:f('store#is_blank', 'hanpa')
-      return s:fenkan_start()
+      return s:henkan_start()
     endif
   endif
   return ''
