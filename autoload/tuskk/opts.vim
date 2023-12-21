@@ -1,9 +1,9 @@
-function opts#default_kana_table() abort
-  let path = expand('<script>:p:h:h') .. '/resources/kana_table.json'
+function tuskk#opts#default_kana_table() abort
+  let path = expand('<script>:p:h:h:h') .. '/resources/kana_table.json'
   return json_decode(join(readfile(path), "\n"))
 endfunction
 
-function opts#default_auto_henkan_characters() abort
+function tuskk#opts#default_auto_henkan_characters() abort
   return 'を、。．，？」！；：);:）”】』》〉｝］〕}]?.,!'
 endfunction
 
@@ -13,7 +13,7 @@ function s:create_file(path) abort
         \ ->mkdir('p')
 endfunction
 
-function opts#parse(opts) abort
+function s:export_parse(opts) abort
   " マーカー
   let s:henkan_marker = get(a:opts, 'henkan_marker', '▽')
   let s:select_marker = get(a:opts, 'select_marker', '▼')
@@ -62,8 +62,7 @@ function opts#parse(opts) abort
   endif
 
   " 自動変換文字 変換待ち状態でこれらの文字が入力されたら即座に変換を行う
-  " TODO オプトインにする
-  let s:auto_henkan_characters = get(a:opts, 'auto_henkan_characters', opts#default_auto_henkan_characters())
+  let s:auto_henkan_characters = get(a:opts, 'auto_henkan_characters', '')
 
   " 自動補完最小文字数 (0の場合は自動補完しない)
   let s:min_auto_complete_length = get(a:opts, 'min_auto_complete_length', 0)
@@ -146,7 +145,7 @@ function opts#parse(opts) abort
   endfor
 
   " かなテーブル
-  let raw_kana_table = get(a:opts, 'kana_table', opts#default_kana_table())
+  let raw_kana_table = get(a:opts, 'kana_table', {})
 
   let shift_key_list = []
   let s:keymap_dict = {}
@@ -213,6 +212,6 @@ function opts#parse(opts) abort
   endfor
 endfunction
 
-function opts#get(name) abort
+function tuskk#opts#get(name) abort
   return s:[a:name]
 endfunction

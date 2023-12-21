@@ -9,7 +9,7 @@ function user_jisyo#add_word(context) abort
 
   let target = a:context.okuri ==# '' ? 'nasi' : 'ari'
 
-  let user_jisyo_winnr = bufwinnr(bufnr(opts#get('user_jisyo_path')))
+  let user_jisyo_winnr = bufwinnr(bufnr(tuskk#opts#get('user_jisyo_path')))
   if user_jisyo_winnr > 0
     " ユーザー辞書がすでに開いている場合は
     " okuri-ari/okuri-nasiの行へジャンプする
@@ -32,5 +32,5 @@ function user_jisyo#open(target = '') abort
   elseif a:target !=# ''
     throw '引数は空文字、"nasi"または"ari"のいずれかを指定してください'
   endif
-  execute 'botright 5new' jump_line opts#get("user_jisyo_path")
+  execute 'botright 5new' jump_line tuskk#opts#get("user_jisyo_path")
 endfunction

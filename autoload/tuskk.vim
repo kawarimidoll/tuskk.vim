@@ -28,7 +28,6 @@ function s:f(funcname, ...) abort
 endfunction
 
 call s:import('inline_mark')
-call s:import('opts')
 call s:import('user_jisyo')
 call s:import('store')
 call s:import('phase')
@@ -94,7 +93,7 @@ function tuskk#enable() abort
 
   let s:keys_to_remaps = []
   let sid = "\<sid>"
-  for [key, val] in items(opts#get('map_keys_dict'))
+  for [key, val] in items(tuskk#opts#get('map_keys_dict'))
     if index(['|', ''''], key) >= 0
       continue
     endif
@@ -104,7 +103,7 @@ function tuskk#enable() abort
     execute $"inoremap {k} <cmd>call {sid}ins('{keytrans(k)}', {val})<cr>"
   endfor
 
-  if opts#get('textwidth_zero')
+  if tuskk#opts#get('textwidth_zero')
     let s:save_textwidth = &textwidth
     set textwidth=0
   endif
@@ -165,8 +164,10 @@ function tuskk#init(opts = {}) abort
   " 普通に使うとconvertersがautoloadされないためここを利用して呼び出しておく
   call tuskk#utils#do_user(tuskk#converters#as_is('tuskk_initialize_pre'))
   defer tuskk#utils#do_user('tuskk_initialize_post')
+  call s:import('tuskk/opts')
+
   try
-    call opts#parse(a:opts)
+    call s:f('opts#parse', a:opts)
   catch
     call tuskk#utils#echoerr($'[init] {v:exception}', 'abort')
     return
@@ -254,7 +255,7 @@ function s:on_kakutei_special(user_data) abort
   if special ==# 'set_to_user_jisyo'
     let menu = context.menu ==# '' ? '' : $';{context.menu}'
     let line = $'{yomi} /{context.abbr}{menu}/'
-    call writefile([line], opts#get('user_jisyo_path'), "a")
+    call writefile([line], tuskk#opts#get('user_jisyo_path'), "a")
     return
   endif
 
@@ -309,18 +310,18 @@ function s:get_spec(key) abort
   let spec = { 'string': '', 'store': '', 'key': a:key }
 
   let current = store#get('hanpa') .. a:key
-  if has_key(opts#get('kana_table'), current)
+  if has_key(tuskk#opts#get('kana_table'), current)
     let spec.reason = 'combined:found'
     " s:store.hanpaの残存文字と合わせて完成した場合
-    if type(opts#get('kana_table')[current]) == v:t_dict
-      call extend(spec, opts#get('kana_table')[current])
+    if type(tuskk#opts#get('kana_table')[current]) == v:t_dict
+      call extend(spec, tuskk#opts#get('kana_table')[current])
       return spec
     endif
-    let [kana, roma; _rest] = opts#get('kana_table')[current]->split('\A*\zs') + ['']
+    let [kana, roma; _rest] = tuskk#opts#get('kana_table')[current]->split('\A*\zs') + ['']
     let spec.string = kana
     let spec.store = roma
     return spec
-  elseif has_key(opts#get('preceding_keys_dict'), current)
+  elseif has_key(tuskk#opts#get('preceding_keys_dict'), current)
     let spec.reason = 'combined:probably'
     " 完成はしていないが、先行入力の可能性がある場合
     let spec.store = current
@@ -329,25 +330,25 @@ function s:get_spec(key) abort
 
   " ここまでで値がヒットせず、put_hanpaがfalseなら、
   " storeに残っていた半端な文字をバッファに載せずに消す
-  let spec.string = opts#get('put_hanpa') ? store#get('hanpa') : ''
+  let spec.string = tuskk#opts#get('put_hanpa') ? store#get('hanpa') : ''
 
-  if has_key(opts#get('kana_table'), a:key)
+  if has_key(tuskk#opts#get('kana_table'), a:key)
     let spec.reason = 'alone:found'
     " 先行入力を無視して単体で完成した場合
-    if type(opts#get('kana_table')[a:key]) == v:t_dict
-      call extend(spec, opts#get('kana_table')[a:key])
+    if type(tuskk#opts#get('kana_table')[a:key]) == v:t_dict
+      call extend(spec, tuskk#opts#get('kana_table')[a:key])
       " 値が辞書ならput_hanpaに関らずstringは削除
       " storeに値を保存する
       let spec.string = ''
       let spec.store = store#get('hanpa')
     else
-      let [kana, roma; _rest] = opts#get('kana_table')[a:key]->split('\A*\zs') + ['']
+      let [kana, roma; _rest] = tuskk#opts#get('kana_table')[a:key]->split('\A*\zs') + ['']
       let spec.string ..= kana
       let spec.store = roma
     endif
 
     return spec
-  elseif has_key(opts#get('preceding_keys_dict'), a:key)
+  elseif has_key(tuskk#opts#get('preceding_keys_dict'), a:key)
     let spec.reason = 'alone:probably'
     " 完成はしていないが、単体で先行入力の可能性がある場合
     let spec.store = a:key
@@ -362,7 +363,7 @@ function s:get_spec(key) abort
 endfunction
 
 function s:henkan_fuzzy() abort
-  let exact_match = store#get('machi')->strcharlen() < opts#get('suggest_prefix_match_minimum')
+  let exact_match = store#get('machi')->strcharlen() < tuskk#opts#get('suggest_prefix_match_minimum')
   call henkan_list#update_fuzzy_v2(store#get('machi'), exact_match)
   let comp_list = copy(henkan_list#get_fuzzy())
   if mode() !=# 'i'
@@ -413,13 +414,13 @@ function s:henkan_start() abort
   let comp_list = copy(henkan_list#get())
   let list_len = len(comp_list)
 
-  if list_len == 1 && opts#get('kakutei_unique')
+  if list_len == 1 && tuskk#opts#get('kakutei_unique')
     call store#clear()
     call phase#set('hanpa', 'kakutei_unique')
     return comp_list[0].abbr
   endif
 
-  if opts#get('use_google_cgi')
+  if tuskk#opts#get('use_google_cgi')
     call add(comp_list, s:make_special_henkan_item({
           \ 'abbr': '[Google変換]',
           \ 'special': 'google'
@@ -513,7 +514,7 @@ function s:henkan(fallback_key) abort
     if s:phase_kouho
       return "\<c-n>"
     endif
-    if opts#get('trailing_n') && store#get('hanpa') ==# 'n' && store#get('machi')->slice(-1) != 'ん'
+    if tuskk#opts#get('trailing_n') && store#get('hanpa') ==# 'n' && store#get('machi')->slice(-1) != 'ん'
       call store#push('machi', 'ん')
     endif
     let feed = s:henkan_start()
@@ -547,8 +548,8 @@ function s:ins(key, with_sticky = v:false) abort
 
   let feed = s:handle_spec(spec)
 
-  if phase#is('machi') && s:last_machi != store#get('machi') && opts#get('suggest_wait_ms') >= 0
-    call tuskk#utils#debounce(funcref('s:henkan_fuzzy'), opts#get('suggest_wait_ms'))
+  if phase#is('machi') && s:last_machi != store#get('machi') && tuskk#opts#get('suggest_wait_ms') >= 0
+    call tuskk#utils#debounce(funcref('s:henkan_fuzzy'), tuskk#opts#get('suggest_wait_ms'))
   endif
   let s:last_machi = store#get('machi')
 
@@ -680,7 +681,7 @@ function s:handle_spec(args) abort
   if phase#is('hanpa') || tuskk#utils#hasunprintable(feed)
     return feed
   elseif phase#is('machi')
-    if opts#get('auto_henkan_characters') =~# tuskk#utils#lastchar(feed)
+    if tuskk#opts#get('auto_henkan_characters') =~# tuskk#utils#lastchar(feed)
       " ** EXPERIMENTAL **
       " machi状態でauto_henkan_charactersに含まれる文字が入力されたら
       " それをokuriに指定して送り変換を開始する
@@ -700,7 +701,7 @@ function s:handle_spec(args) abort
 endfunction
 
 function s:display_marks(...) abort
-  let hlname = opts#get('highlight_hanpa')
+  let hlname = tuskk#opts#get('highlight_hanpa')
   if hlname == ''
     let [lnum, col] = getpos('.')[1:2]
     let syn_offset = (col > 1 && col == col('$')) ? 1 : 0
@@ -710,22 +711,22 @@ function s:display_marks(...) abort
   let mark_process_list = []
 
   if phase#is('machi')
-    let hlname = opts#get('highlight_machi')
+    let hlname = tuskk#opts#get('highlight_machi')
   endif
   if store#is_present('kouho')
     call add(mark_process_list, ['clear', 'machi'])
-    let hlname = tuskk#utils#ifempty(opts#get('highlight_kouho'), hlname)
+    let hlname = tuskk#utils#ifempty(tuskk#opts#get('highlight_kouho'), hlname)
     call add(mark_process_list, ['put', 'kouho', hlname])
   elseif store#is_present('machi')
     call add(mark_process_list, ['clear', 'kouho'])
-    let hlname = tuskk#utils#ifempty(opts#get('highlight_machi'), hlname)
+    let hlname = tuskk#utils#ifempty(tuskk#opts#get('highlight_machi'), hlname)
     call add(mark_process_list, ['put', 'machi', hlname])
   else
     call add(mark_process_list, ['clear', 'kouho'])
     call add(mark_process_list, ['clear', 'machi'])
   endif
   if phase#is('okuri')
-    let hlname = tuskk#utils#ifempty(opts#get('highlight_okuri'), hlname)
+    let hlname = tuskk#utils#ifempty(tuskk#opts#get('highlight_okuri'), hlname)
   endif
   if store#is_present('okuri')
     call add(mark_process_list, ['put', 'okuri', hlname])

@@ -1,15 +1,15 @@
 function s:gen_henkan_query(str, opts = {}) abort
   let str = a:str->escape('()[]{}.*+?^$|\')
-  if opts#get('merge_tsu')
+  if tuskk#opts#get('merge_tsu')
     let str = substitute(str, 'っ\+', 'っ', 'g')
   endif
-  if opts#get('trailing_n') && !get(a:opts, 'no_trailing_n', v:false)
+  if tuskk#opts#get('trailing_n') && !get(a:opts, 'no_trailing_n', v:false)
     let str = substitute(str, 'n$', 'ん', '')
   endif
-  if opts#get('smart_vu')
+  if tuskk#opts#get('smart_vu')
     let str = substitute(str, 'ゔ\|う゛', '(ゔ|う゛)', 'g')
   endif
-  if opts#get('awk_ignore_case')
+  if tuskk#opts#get('awk_ignore_case')
     let str = str->substitute('あ', '(あ|ぁ)', 'g')
           \ ->substitute('い', '(い|ぃ)', 'g')
           \ ->substitute('う', '(う|ぅ)', 'g')
@@ -73,7 +73,7 @@ function s:populate_henkan_list(query) abort
 
   let already_add_dict = {}
   let henkan_list = []
-  for jisyo in opts#get('jisyo_list')
+  for jisyo in tuskk#opts#get('jisyo_list')
     let lines = jisyo.grep_cmd->substitute(':q:', $'{query} /', '')->systemlist()
     let kouho_list = s:parse_henkan_list_v2(lines, jisyo)
     for kouho in kouho_list
@@ -117,7 +117,7 @@ endfunction
 function henkan_list#update_manual_v2(machi, okuri = '') abort
   let query = s:gen_henkan_query(a:machi)
   let suffix = a:okuri ==# '' ? ''
-        \ : opts#get('auto_henkan_characters') =~# a:okuri ? ''
+        \ : tuskk#opts#get('auto_henkan_characters') =~# a:okuri ? ''
         \ : tuskk#utils#consonant1st(a:okuri)
 
   let s:latest_henkan_list = s:populate_henkan_list(query .. suffix)
@@ -128,9 +128,9 @@ function henkan_list#update_fuzzy_v2(str, exact_match = v:false) abort
   let suffix = a:exact_match ? '' : '[^!-~]*'
   let henkan_list = s:populate_henkan_list(query .. suffix)
 
-  if opts#get('suggest_sort_by') ==# 'length'
+  if tuskk#opts#get('suggest_sort_by') ==# 'length'
     call sort(henkan_list, {a,b -> a.user_data.len - b.user_data.len})
-  elseif opts#get('suggest_sort_by') ==# 'code'
+  elseif tuskk#opts#get('suggest_sort_by') ==# 'code'
     call sort(henkan_list, {a,b -> tuskk#utils#strcmp(a.user_data.yomi, b.user_data.yomi)})
   endif
 
