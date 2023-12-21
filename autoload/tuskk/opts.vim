@@ -1,9 +1,9 @@
-function tuskk#opts#default_kana_table() abort
+function tuskk#opts#builtin_kana_table() abort
   let path = expand('<script>:p:h:h:h') .. '/resources/kana_table.json'
   return json_decode(join(readfile(path), "\n"))
 endfunction
 
-function tuskk#opts#default_auto_henkan_characters() abort
+function tuskk#opts#builtin_auto_henkan_characters() abort
   return 'を、。．，？」！；：);:）”】』》〉｝］〕}]?.,!'
 endfunction
 

@@ -16,7 +16,7 @@ call tuskk#init({
       \   { 'path': expand('~/.cache/vim/SKK-JISYO.emoji'), 'encoding': 'utf-8' },
       \   { 'path': expand('~/.cache/vim/SKK-JISYO.nicoime'), 'encoding': 'utf-8', 'mark': '[N]' },
       \ ],
-      \ 'kana_table': tuskk#opts#default_kana_table(),
+      \ 'kana_table': tuskk#opts#builtin_kana_table(),
       \ 'suggest_wait_ms': 200,
       \ 'suggest_prefix_match_minimum': 5,
       \ 'suggest_sort_by': 'length',
