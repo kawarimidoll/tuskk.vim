@@ -28,7 +28,6 @@ function s:f(funcname, ...) abort
 endfunction
 
 call s:import('phase')
-call s:import('henkan_list')
 
 function s:feed(str) abort
   call feedkeys(a:str, 'ni')
@@ -352,10 +351,10 @@ function s:get_spec(key) abort
   return spec
 endfunction
 
-function s:henkan_fuzzy() abort
+function s:suggest_start() abort
   let exact_match = s:f('store#get', 'machi')->strcharlen() < tuskk#opts#get('suggest_prefix_match_minimum')
-  call henkan_list#update_fuzzy_v2(s:f('store#get', 'machi'), exact_match)
-  let comp_list = copy(henkan_list#get_fuzzy())
+  call tuskk#henkan_list#update_suggest(s:f('store#get', 'machi'), exact_match)
+  let comp_list = copy(tuskk#henkan_list#get_suggest())
   if mode() !=# 'i'
     " タイマー実行しており、さらに変換リストの構築に時間がかかるため、
     " この時点で挿入モードから抜けてしまっている可能性がある
@@ -400,8 +399,8 @@ function s:make_special_henkan_item(opts) abort
 endfunction
 
 function s:henkan_start() abort
-  call henkan_list#update_manual_v2(s:f('store#get', 'machi'), s:f('store#get', 'okuri'))
-  let comp_list = copy(henkan_list#get())
+  call tuskk#henkan_list#update_manual(s:f('store#get', 'machi'), s:f('store#get', 'okuri'))
+  let comp_list = copy(tuskk#henkan_list#get_manual())
   let list_len = len(comp_list)
 
   if list_len == 1 && tuskk#opts#get('kakutei_unique')
@@ -540,7 +539,7 @@ function s:ins(key, with_sticky = v:false) abort
   let feed = s:handle_spec(spec)
 
   if phase#is('machi') && s:last_machi != s:f('store#get', 'machi') && tuskk#opts#get('suggest_wait_ms') >= 0
-    call tuskk#utils#debounce(funcref('s:henkan_fuzzy'), tuskk#opts#get('suggest_wait_ms'))
+    call tuskk#utils#debounce(funcref('s:suggest_start'), tuskk#opts#get('suggest_wait_ms'))
   endif
   let s:last_machi = s:f('store#get', 'machi')
 

@@ -22,16 +22,7 @@ function s:gen_henkan_query(str, opts = {}) abort
   return str
 endfunction
 
-function henkan_list#get_fuzzy() abort
-  return get(s:, 'latest_fuzzy_henkan_list', [])
-endfunction
-
-function henkan_list#get(async = v:false) abort
-  let target = a:async ? 'latest_async_henkan_list' : 'latest_henkan_list'
-  return get(s:, target, [])
-endfunction
-
-function s:parse_henkan_list_v2(lines, jisyo) abort
+function s:parse_henkan_list(lines, jisyo) abort
   if empty(a:lines)
     return []
   endif
@@ -75,7 +66,7 @@ function s:populate_henkan_list(query) abort
   let henkan_list = []
   for jisyo in tuskk#opts#get('jisyo_list')
     let lines = jisyo.grep_cmd->substitute(':q:', $'{query} /', '')->systemlist()
-    let kouho_list = s:parse_henkan_list_v2(lines, jisyo)
+    let kouho_list = s:parse_henkan_list(lines, jisyo)
     for kouho in kouho_list
       if !has_key(already_add_dict, kouho.abbr)
         let already_add_dict[kouho.abbr] = 1
@@ -114,7 +105,7 @@ endfunction
 
 " 送りなし検索→machi='けんさく',okuri=''
 " 送りあり検索→machi='しら',okuri='べ'
-function henkan_list#update_manual_v2(machi, okuri = '') abort
+function tuskk#henkan_list#update_manual(machi, okuri = '') abort
   let query = s:gen_henkan_query(a:machi)
   let suffix = a:okuri ==# '' ? ''
         \ : tuskk#opts#get('auto_henkan_characters') =~# a:okuri ? ''
@@ -123,7 +114,7 @@ function henkan_list#update_manual_v2(machi, okuri = '') abort
   let s:latest_henkan_list = s:populate_henkan_list(query .. suffix)
 endfunction
 
-function henkan_list#update_fuzzy_v2(str, exact_match = v:false) abort
+function tuskk#henkan_list#update_suggest(str, exact_match = v:false) abort
   let query = s:gen_henkan_query(a:str)
   let suffix = a:exact_match ? '' : '[^!-~]*'
   let henkan_list = s:populate_henkan_list(query .. suffix)
@@ -134,5 +125,13 @@ function henkan_list#update_fuzzy_v2(str, exact_match = v:false) abort
     call sort(henkan_list, {a,b -> tuskk#utils#strcmp(a.user_data.yomi, b.user_data.yomi)})
   endif
 
-  let s:latest_fuzzy_henkan_list = henkan_list
+  let s:latest_suggest_list = henkan_list
+endfunction
+
+function tuskk#henkan_list#get_manual() abort
+  return get(s:, 'latest_henkan_list', [])
+endfunction
+
+function tuskk#henkan_list#get_suggest() abort
+  return get(s:, 'latest_suggest_list', [])
 endfunction
