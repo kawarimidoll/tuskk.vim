@@ -35,13 +35,6 @@ call s:import('henkan_list')
 call s:import('mode')
 call s:import('cmd_buf')
 
-function s:mark_put(target, hlname) abort
-  call inline_mark#put_text(a:target, store#get(a:target), a:hlname)
-endfunction
-function s:mark_clear(target = '') abort
-  call inline_mark#clear(a:target)
-endfunction
-
 function s:feed(str) abort
   call feedkeys(a:str, 'ni')
 endfunction
@@ -54,7 +47,7 @@ function s:is_tuskk_completed() abort
 endfunction
 
 function tuskk#clear_state(set_reason = 'clear_state') abort
-  call s:mark_clear()
+  call store#hide()
   call store#clear()
   call phase#set('hanpa', a:set_reason)
   let s:latest_henkan_item = {}
@@ -377,7 +370,7 @@ function s:henkan_fuzzy() abort
     call s:feed("\<c-e>")
     return
   endif
-  let machi_pos = inline_mark#get('machi')
+  let machi_pos = store#getpos('machi')
   let col = machi_pos->empty() ? col('.') : machi_pos[1]
   call complete(col, comp_list)
 endfunction
@@ -616,7 +609,7 @@ function s:handle_spec(args) abort
         let feed = s:zengo(spec.key)
       endif
     elseif spec.func ==# 'extend'
-      call s:mark_clear()
+      call store#hide()
       let char = tuskk#utils#leftchar()
       " 現状、ひらがなのみ対応
       if char =~ '^[ぁ-ゖ]$'
@@ -627,7 +620,7 @@ function s:handle_spec(args) abort
         endif
       endif
     elseif spec.func ==# 'shrink'
-      call s:mark_clear()
+      call store#hide()
       if store#is_present('machi')
         let char = store#shift('machi')
         " machi状態のままバッファを変更するため、bsを仕込む
@@ -746,9 +739,9 @@ function s:display_marks(...) abort
 
   for process in mark_process_list
     if process[0] ==# 'clear'
-      call s:mark_clear(process[1])
+      call store#hide(process[1])
     else
-      call s:mark_put(process[1], process[2])
+      call store#show(process[1], process[2])
     endif
   endfor
 endfunction

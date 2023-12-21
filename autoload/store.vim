@@ -45,3 +45,15 @@ endfunction
 function store#is_present(target) abort
   return !store#is_blank(a:target)
 endfunction
+
+function store#show(target, hlname) abort
+  call inline_mark#put_text(a:target, store#get(a:target), a:hlname)
+endfunction
+
+function store#hide(target = '') abort
+  call inline_mark#clear(a:target)
+endfunction
+
+function store#getpos(target) abort
+  return inline_mark#get(a:target)
+endfunction
