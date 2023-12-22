@@ -29,7 +29,7 @@ if !exists('s:phase')
     return call(s:sid_functions[a:funcname], a:000)
   endfunction
 
-  function tuskk#init(opts = {}) abort
+  function tuskk#initialize(opts) abort
     call tuskk#utils#do_user('tuskk_initialize_pre')
     defer tuskk#utils#do_user('tuskk_initialize_post')
     call s:import('tuskk/opts')
@@ -37,7 +37,7 @@ if !exists('s:phase')
     try
       call s:f('opts#parse', a:opts)
     catch
-      call tuskk#utils#echoerr($'[init] {v:exception}', 'abort')
+      call tuskk#utils#echoerr($'[initialize] {v:exception}', 'abort')
       return
     endtry
 

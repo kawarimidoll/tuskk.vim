@@ -8,7 +8,7 @@ cnoremap <c-j> <cmd>call tuskk#cmd_buf()<cr>
 inoremap <c-k> <cmd>imap<cr>
 
 let uj = expand('~/.cache/vim/SKK-JISYO.user')
-call tuskk#init({
+call tuskk#initialize({
       \ 'user_jisyo_path': uj,
       \ 'jisyo_list':  [
       \   { 'path': '~/.cache/vim/SKK-JISYO.L', 'encoding': 'euc-jp', 'mark': '[L]' },
