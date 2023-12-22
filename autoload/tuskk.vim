@@ -7,27 +7,56 @@ elseif !executable('rg')
   finish
 endif
 
-" function import system
-let s:sid_functions = {}
-function s:import(filename) abort
-  let path = $"{expand('<script>:p:h')}/{a:filename}.vim"
-  execute 'source' path
-  let sid = getscriptinfo({'name': path})[0].sid
-  let functions = getscriptinfo({'sid': sid})[0].functions
-  let filename = substitute(a:filename, '.*/', '', '')
-  let prefix = '^<SNR>\d\+_export_'
-  for funcname in functions
-    if funcname =~ prefix
-      let keyname = filename .. substitute(funcname, prefix, '#', '')
-      let s:sid_functions[keyname] = funcname
-    endif
-  endfor
-endfunction
-function s:f(funcname, ...) abort
-  return call(s:sid_functions[a:funcname], a:000)
-endfunction
+" :h write-plugin-quickload
+if !exists('s:phase')
+  " function import system
+  let s:sid_functions = {}
+  function s:import(filename) abort
+    let path = $"{expand('<script>:p:h')}/{a:filename}.vim"
+    execute 'source' path
+    let sid = getscriptinfo({'name': path})[0].sid
+    let functions = getscriptinfo({'sid': sid})[0].functions
+    let filename = substitute(a:filename, '.*/', '', '')
+    let prefix = '^<SNR>\d\+_export_'
+    for funcname in functions
+      if funcname =~ prefix
+        let keyname = filename .. substitute(funcname, prefix, '#', '')
+        let s:sid_functions[keyname] = funcname
+      endif
+    endfor
+  endfunction
+  function s:f(funcname, ...) abort
+    return call(s:sid_functions[a:funcname], a:000)
+  endfunction
 
-let s:phase = { 'current': '', 'previous': '', 'reason': '', 'kouho': v:false }
+  function tuskk#init(opts = {}) abort
+    call tuskk#utils#do_user('tuskk_initialize_pre')
+    defer tuskk#utils#do_user('tuskk_initialize_post')
+    call s:import('tuskk/opts')
+
+    try
+      call s:f('opts#parse', a:opts)
+    catch
+      call tuskk#utils#echoerr($'[init] {v:exception}', 'abort')
+      return
+    endtry
+
+    let s:is_enable = v:false
+    let s:phase = { 'current': '', 'previous': '', 'reason': '', 'kouho': v:false }
+
+    execute 'autocmd FuncUndefined tuskk#* ++once source ' .. expand('<script>')
+  endfunction
+
+  function tuskk#is_enabled() abort
+    return get(s:, 'is_enable', v:false)
+  endfunction
+
+  finish
+endif
+
+call s:import('tuskk/store')
+call s:import('tuskk/user_jisyo')
+call s:import('tuskk/cmd_buf')
 
 " function s:phase_get() abort
 "   return s:phase
@@ -169,24 +198,6 @@ endfunction
 
 function tuskk#toggle() abort
   return s:is_enable ? tuskk#disable() : tuskk#enable()
-endfunction
-
-function tuskk#init(opts = {}) abort
-  call tuskk#utils#do_user('tuskk_initialize_pre')
-  defer tuskk#utils#do_user('tuskk_initialize_post')
-  call s:import('tuskk/opts')
-  call s:import('tuskk/store')
-  call s:import('tuskk/user_jisyo')
-  call s:import('tuskk/cmd_buf')
-
-  try
-    call s:f('opts#parse', a:opts)
-  catch
-    call tuskk#utils#echoerr($'[init] {v:exception}', 'abort')
-    return
-  endtry
-
-  let s:is_enable = v:false
 endfunction
 
 " p1からp2までのバッファの文字列を変換する
