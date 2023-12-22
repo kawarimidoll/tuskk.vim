@@ -508,6 +508,10 @@ function s:backspace() abort
 endfunction
 
 function s:kakutei(fallback_key) abort
+  if !s:is_tuskk_completed() && complete_info().selected >= 0
+    return "\<c-y>"
+  endif
+
   call s:phase_set('hanpa', 'kakutei')
   let feed = (s:f('store#get', 'kouho') ?? s:f('store#get', 'machi')) .. s:f('store#get', 'okuri')
   call s:f('store#clear', 'kouho')
