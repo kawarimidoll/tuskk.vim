@@ -406,9 +406,7 @@ function s:suggest_start() abort
     call s:feed("\<c-e>")
     return
   endif
-  let machi_pos = s:f('store#getpos', 'machi')
-  let col = get(machi_pos, 1, 0) ?? col('.')
-  call complete(col, comp_list)
+  call complete(col('.'), comp_list)
 endfunction
 
 function s:make_special_henkan_item(opts) abort
@@ -650,7 +648,7 @@ function s:handle_spec(args) abort
         let feed = s:zengo(spec.key)
       endif
     elseif spec.func ==# 'extend'
-      call s:f('store#hide', )
+      call s:f('store#hide')
       let char = tuskk#utils#leftchar()
       " 現状、ひらがなのみ対応
       if char =~ '^[ぁ-ゖー]$'
@@ -661,7 +659,7 @@ function s:handle_spec(args) abort
         endif
       endif
     elseif spec.func ==# 'shrink'
-      call s:f('store#hide', )
+      call s:f('store#hide')
       if s:f('store#is_present', 'machi')
         let char = s:f('store#shift', 'machi')
         " machi状態のままバッファを変更するため、bsを仕込む
@@ -742,47 +740,29 @@ function s:display_marks(...) abort
     let hlname = synID(lnum, col-syn_offset, 1)->synIDattr('name')
   endif
 
-  let mark_process_list = []
+  call s:f('store#hide')
+  let mark_list = []
 
-  if s:phase_is('machi')
-    let hlname = tuskk#opts#get('highlight_machi')
-  endif
   if s:f('store#is_present', 'kouho')
-    call add(mark_process_list, ['clear', 'machi'])
     let hlname = tuskk#opts#get('highlight_kouho') ?? hlname
-    call add(mark_process_list, ['put', 'kouho', hlname])
-  elseif s:f('store#is_present', 'machi')
-    call add(mark_process_list, ['clear', 'kouho'])
-    let hlname = tuskk#opts#get('highlight_machi') ?? hlname
-    call add(mark_process_list, ['put', 'machi', hlname])
-  else
-    call add(mark_process_list, ['clear', 'kouho'])
-    call add(mark_process_list, ['clear', 'machi'])
-  endif
-  if s:phase_is('okuri')
+    call add(mark_list, [s:f('store#get', 'kouho'), hlname])
     let hlname = tuskk#opts#get('highlight_okuri') ?? hlname
-  endif
-  if s:f('store#is_present', 'okuri')
-    call add(mark_process_list, ['put', 'okuri', hlname])
+    call add(mark_list, [s:f('store#get', 'okuri') .. s:f('store#get', 'hanpa'), hlname])
+  elseif s:phase_is('machi')
+    let hlname = tuskk#opts#get('highlight_machi') ?? hlname
+    call add(mark_list, [s:f('store#get', 'machi') .. s:f('store#get', 'hanpa'), hlname])
+  elseif s:phase_is('okuri')
+    let hlname = tuskk#opts#get('highlight_machi') ?? hlname
+    call add(mark_list, [s:f('store#get', 'machi'), hlname])
+    let hlname = tuskk#opts#get('highlight_okuri') ?? hlname
+    call add(mark_list, [s:f('store#get', 'okuri') .. s:f('store#get', 'hanpa'), hlname])
   else
-    call add(mark_process_list, ['clear', 'okuri'])
-  endif
-  if s:f('store#is_present', 'hanpa')
-    call add(mark_process_list, ['put', 'hanpa', hlname])
-  else
-    call add(mark_process_list, ['clear', 'hanpa'])
+    call add(mark_list, [s:f('store#get', 'hanpa'), hlname])
   endif
 
-  if has('nvim')
-    " vimとneovimでは同一座標にmarkが打たれたときの表示順が逆
-    call reverse(mark_process_list)
-  endif
+  call filter(mark_list, 'v:val[0] !=# ""')
 
-  for process in mark_process_list
-    if process[0] ==# 'clear'
-      call s:f('store#hide', process[1])
-    else
-      call s:f('store#show', process[1], process[2])
-    endif
-  endfor
+  if !empty(mark_list)
+    call s:f('store#show', mark_list)
+  endif
 endfunction

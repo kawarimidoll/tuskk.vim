@@ -46,22 +46,10 @@ function s:export_is_present(target) abort
   return !s:export_is_blank(a:target)
 endfunction
 
-function s:export_show(target, hlname) abort
-  let name = a:target
-  let pos = s:v_mark_getpos(name)
-  let [lnum, col] = pos ?? getcurpos('.')[1:2]
-  let text = s:export_get(name)
-  let hl = a:hlname ?? 'Normal'
-  call s:v_mark_clear(name)
-  call s:v_mark_put(lnum, col, name, text, hl)
-endfunction
-
-function s:export_hide(target = '') abort
-  call s:v_mark_clear(a:target)
-endfunction
-
-function s:export_getpos(target) abort
-  return s:v_mark_getpos(a:target)
+function s:export_show(list) abort
+  call s:export_hide()
+  let [lnum, col] = getcurpos()[1:2]
+  call s:v_mark_put(lnum, col, a:list)
 endfunction
 
 " 以下、virtual markの互換API
@@ -70,48 +58,25 @@ endfunction
 function s:v_mark_name(name) abort
   return $'tuskk#store#{a:name}'
 endfunction
-let s:default_hl = 'Normal'
 
 if has('nvim')
   let s:ns_dict = {}
 
-  function s:v_mark_clear(name = '') abort
-    if a:name ==# ''
-      for v in s:ns_dict->values()
-        call nvim_buf_clear_namespace(0, v, 0, -1)
-      endfor
-      let s:ns_dict = {}
-      return
-    endif
-
-    let name = s:v_mark_name(a:name)
-    if has_key(s:ns_dict, name)
-      call nvim_buf_clear_namespace(0, s:ns_dict[name], 0, -1)
-      call remove(s:ns_dict, name)
-    endif
+  function s:export_hide() abort
+    for v in s:ns_dict->values()
+      call nvim_buf_clear_namespace(0, v, 0, -1)
+    endfor
+    let s:ns_dict = {}
   endfunction
 
-  function s:v_mark_getpos(name) abort
-    let name = s:v_mark_name(a:name)
-    if has_key(s:ns_dict, name)
-      let extmarks = nvim_buf_get_extmarks(0, s:ns_dict[name], 0, -1, {'limit':1})
-      " extmarks = [ [extmark_id, row, col], ... ]
-      if !empty(extmarks) && len(extmarks[0]) == 3
-        return [extmarks[0][1]+1, extmarks[0][2]+1]
-      endif
-    endif
-    return []
-  endfunction
-
-  function s:v_mark_put(lnum, col, name, text, hl) abort
-    let name = s:v_mark_name(a:name)
-
+  function s:v_mark_put(lnum, col, list) abort
+    let name = s:v_mark_name('mark')
     let ns_id = nvim_create_namespace(name)
     let s:ns_dict[name] = ns_id
 
     " nvim_buf_set_extmarkは0-basedなので、1を引く
     call nvim_buf_set_extmark(0, ns_id, a:lnum - 1, a:col - 1, {
-          \   'virt_text': [[a:text, a:hl]],
+          \   'virt_text': a:list,
           \   'virt_text_pos': 'inline',
           \ })
     " \   'right_gravity': v:false
@@ -119,30 +84,21 @@ if has('nvim')
 else
   let s:prop_types = {}
 
-  function s:v_mark_clear(name = '') abort
-    if a:name ==# ''
-      for k in s:prop_types->keys()
-        call prop_remove({'type': k, 'all': v:true})
-      endfor
-      return
-    endif
-
-    let name = s:v_mark_name(a:name)
-    if has_key(s:prop_types, name)
-      call prop_remove({'type': name, 'all': v:true})
-    endif
+  function s:export_hide() abort
+    for k in s:prop_types->keys()
+      call prop_remove({'type': k, 'all': v:true})
+    endfor
   endfunction
 
-  function s:v_mark_getpos(name) abort
-    let name = s:v_mark_name(a:name)
-    if prop_type_get(name)->empty()
-      return []
-    endif
-    let prop = prop_find({'type': name, 'lnum': 1})
-    return empty(prop) ? [] : [prop.lnum, prop.col]
+  function s:v_mark_put(lnum, col, list) abort
+    let cnt = 1
+    for [text, hlname] in a:list
+      call s:v_mark_put_single(a:lnum, a:col, $'cnt{cnt}', text, hlname ?? 'Normal')
+      let cnt += 1
+    endfor
   endfunction
 
-  function s:v_mark_put(lnum, col, name, text, hl) abort
+  function s:v_mark_put_single(lnum, col, name, text, hl) abort
     let name = s:v_mark_name(a:name)
 
     let prop_type_def = {'highlight': a:hl}
