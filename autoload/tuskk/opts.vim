@@ -51,6 +51,9 @@ function s:export_parse(opts) abort
   " Google CGI変換
   let s:use_google_cgi = get(a:opts, 'use_google_cgi', v:false)
 
+  " かな入力中に確定しないアルファベットを保持する
+  let s:put_hanpa = get(a:opts, 'put_hanpa', v:false)
+
   " 'っ'が連続したら1回と見做す
   " ex: けっっか→結果
   let s:merge_tsu = get(a:opts, 'merge_tsu', v:false)
@@ -60,17 +63,16 @@ function s:export_parse(opts) abort
   let s:trailing_n = get(a:opts, 'trailing_n', v:false)
 
   " 辞書の見出しの'ゔ'と'う゛'の表記揺れを吸収する
+  " experimental ヘルプには載せない
   let s:smart_vu = get(a:opts, 'smart_vu', v:false)
 
   " 登場頻度の少ないぁぃぅぇぉゎゕゖの大文字小文字を区別しない
   " ゃゅょっは区別する
+  " experimental ヘルプには載せない
   let s:awk_ignore_case = get(a:opts, 'awk_ignore_case', v:false)
 
   " 辞書検索時に大文字小文字を区別しない(abbrevモードでのみ意味がある)
   let abbrev_ignore_case = get(a:opts, 'abbrev_ignore_case', v:false)
-
-  " かな入力中に確定しないアルファベットを削除する
-  let s:put_hanpa = get(a:opts, 'put_hanpa', v:false)
 
   let rg_cmd = 'rg --no-line-number'
   if abbrev_ignore_case
@@ -81,10 +83,13 @@ function s:export_parse(opts) abort
   " デフォルトは~/.cache/vim/SKK-JISYO.user
   let s:user_jisyo_path = get(a:opts, 'user_jisyo_path', '~/.cache/vim/SKK-JISYO.user')->expand()
   if isdirectory(s:user_jisyo_path)
-    throw $"user_jisyo_path is directory {s:user_jisyo_path}"
+    throw $'ユーザー辞書にディレクトリが指定されています。 {s:user_jisyo_path}'
   endif
   " 指定されたパスにファイルがなければ作成する
   if glob(s:user_jisyo_path)->empty()
+    if confirm($'{s:user_jisyo_path} にユーザー辞書ファイルを作成してもよろしいですか？', "&Yes\n&No") != 1
+      throw $'ユーザー辞書ファイルを読み込めませんでした。 {s:user_jisyo_path}'
+    endif
     call s:create_file(s:user_jisyo_path)
     call writefile([
           \ ';; フォーマットは以下',
@@ -104,10 +109,9 @@ function s:export_parse(opts) abort
     call insert(s:jisyo_list, { 'path': s:user_jisyo_path, 'encoding': 'utf-8', 'mark': '[U]' })
   endif
   for jisyo in s:jisyo_list
-    if jisyo.path =~ ':'
-      throw $"jisyo.path must NOT includes ':' {jisyo.path}"
-    elseif !filereadable(jisyo.path)
-      throw $"jisyo.path can't be read {jisyo.path}"
+    let jisyo.path = expand(jisyo.path)
+    if !filereadable(jisyo.path)
+      throw $'辞書ファイルを読み込めませんでした。 {jisyo.path}'
     endif
 
     let jisyo.mark = get(jisyo, 'mark', '')
@@ -117,41 +121,6 @@ function s:export_parse(opts) abort
 
   " かなテーブル
   let raw_kana_table = get(a:opts, 'kana_table', {})
-
-  let shift_key_list = []
-  let s:keymap_dict = {}
-  for [k, val] in items(raw_kana_table)
-    let keys = tuskk#utils#trans_special_key(k)->tuskk#utils#strsplit()
-    let preceding_keys = slice(keys, 0, -1)->join('')
-    let start_key = slice(keys, 0, 1)->join('')
-    let end_key = slice(keys, -1)->join('')
-
-    if !has_key(s:keymap_dict, end_key)
-      let s:keymap_dict[end_key] = {}
-    endif
-    let s:keymap_dict[end_key][preceding_keys] = val
-
-    " start_keyもkeymap_dictに登録する(入力開始位置の指定のため)
-    if !has_key(s:keymap_dict, start_key)
-      let s:keymap_dict[start_key] = {}
-    endif
-    " 文字入力を開始するアルファベットのキーは変換開始キーとして使用する
-    if type(val) == v:t_string && start_key =~# '^\l$'
-      call tuskk#utils#uniq_add(shift_key_list, toupper(start_key))
-    endif
-  endfor
-
-  " 入力テーブルに既に含まれている大文字は変換開始に使わない
-  call filter(shift_key_list, '!has_key(s:keymap_dict, v:val)')
-
-  let s:map_cmds = []
-  for key in s:keymap_dict->keys()
-    let k = keytrans(key)
-    call add(s:map_cmds, [k, $"inoremap {k} <cmd>call t#ins('{keytrans(k)}')<cr>"])
-  endfor
-  for k in shift_key_list
-    call add(s:map_cmds, [k, $"inoremap {k} <cmd>call t#ins('{tolower(k)}',1)<cr>"])
-  endfor
 
   let s:preceding_keys_dict = {}
   let s:map_keys_dict = {}
@@ -164,7 +133,7 @@ function s:export_parse(opts) abort
 
     let tmp = copy(chars)
     while len(tmp) > 1
-      " jsonのキーが'kya'だったら'ky'と'k'を先行入力キーリストに追加する
+      " raw_kana_tableのキーが'kya'だったら'ky'と'k'を先行入力キーリストに追加する
       call remove(tmp, -1)
       let s:preceding_keys_dict[tmp->join('')] = 1
     endwhile
@@ -174,7 +143,7 @@ function s:export_parse(opts) abort
     endfor
   endfor
 
-  " [!-~]のキーはjsonに含まれていないものもすべてマッピングする
+  " [!-~]のキーはraw_kana_tableに含まれていないものもすべてマッピングする
   " 英字大文字でpreceding_keys_dictにないものは
   " 変換開始キーとなるのでtrueをたてておく
   for nr in range(char2nr('!'), char2nr('~'))
