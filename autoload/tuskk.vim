@@ -41,14 +41,13 @@ if !exists('s:phase')
       return
     endtry
 
-    let s:is_enable = v:false
     let s:phase = { 'current': '', 'previous': '', 'reason': '', 'kouho': v:false }
 
     execute 'autocmd FuncUndefined tuskk#* ++once source ' .. expand('<script>')
   endfunction
 
   function tuskk#is_enabled() abort
-    return get(s:, 'is_enable', v:false)
+    return exists('s:keys_to_remaps')
   endfunction
 
   finish
@@ -113,7 +112,7 @@ function tuskk#clear_state(set_reason = 'clear_state') abort
 endfunction
 
 function tuskk#enable() abort
-  if s:is_enable
+  if tuskk#is_enabled()
     return
   endif
   call tuskk#utils#do_user('tuskk_enable_pre')
@@ -158,12 +157,10 @@ function tuskk#enable() abort
 
   call tuskk#mode#clear()
   call tuskk#clear_state('enable')
-
-  let s:is_enable = v:true
 endfunction
 
 function tuskk#disable(escape = v:false) abort
-  if !s:is_enable
+  if !tuskk#is_enabled()
     return
   endif
   call tuskk#utils#do_user('tuskk_disable_pre')
@@ -185,6 +182,7 @@ function tuskk#disable(escape = v:false) abort
       echomsg k v:exception
     endtry
   endfor
+  unlet! s:keys_to_remaps
 
   if has_key(s:, 'save_textwidth')
     let &textwidth = s:save_textwidth
@@ -194,7 +192,6 @@ function tuskk#disable(escape = v:false) abort
   call tuskk#mode#clear()
   call tuskk#clear_state('disable')
 
-  let s:is_enable = v:false
   if mode() !=# 'i'
     return
   endif
@@ -205,7 +202,7 @@ function tuskk#disable(escape = v:false) abort
 endfunction
 
 function tuskk#toggle() abort
-  return s:is_enable ? tuskk#disable() : tuskk#enable()
+  return tuskk#is_enabled() ? tuskk#disable() : tuskk#enable()
 endfunction
 
 " p1からp2までのバッファの文字列を変換する
