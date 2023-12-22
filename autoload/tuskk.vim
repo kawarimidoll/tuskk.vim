@@ -633,7 +633,7 @@ function s:handle_spec(args) abort
       call s:f('store#hide', )
       let char = tuskk#utils#leftchar()
       " 現状、ひらがなのみ対応
-      if char =~ '^[ぁ-ゖ]$'
+      if char =~ '^[ぁ-ゖー]$'
         call s:f('store#unshift', 'machi', char)
         let feed = "\<bs>"
         if s:phase_is('hanpa')
