@@ -58,6 +58,14 @@ call s:import('tuskk/store')
 call s:import('tuskk/user_jisyo')
 call s:import('tuskk/cmd_buf')
 
+function tuskk#open_user_jisyo() abort
+  call s:f('user_jisyo#open')
+endfunction
+
+function tuskk#cmd_buf() abort
+  call s:f('cmd_buf#start')
+endfunction
+
 " function s:phase_get() abort
 "   return s:phase
 " endfunction

@@ -1,4 +1,4 @@
-function tuskk#cmd_buf#start() abort
+function s:export_start() abort
   let cmdtype = getcmdtype()
   if ':/?' !~# cmdtype
     return

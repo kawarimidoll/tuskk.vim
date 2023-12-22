@@ -17,20 +17,18 @@ function s:export_add_word(context) abort
     normal! gg
     execute $'/okuri-{nasi}'
   else
-    call tuskk#user_jisyo#open(target)
+    call s:export_open(target)
   endif
 
   call feedkeys($"\<c-o>o{yomi} //\<c-g>U\<left>\<cmd>call tuskk#enable()\<cr>", 'n')
 endfunction
 
-function tuskk#user_jisyo#open(target = '') abort
+function s:export_open(target = '') abort
   let jump_line = ''
   if a:target ==# 'nasi'
     let jump_line = '+/okuri-nasi'
   elseif a:target ==# 'ari'
     let jump_line =  '+/okuri-ari'
-  elseif a:target !=# ''
-    throw '引数は空文字、"nasi"または"ari"のいずれかを指定してください'
   endif
   execute 'botright 5new' jump_line tuskk#opts#get("user_jisyo_path")
 endfunction
