@@ -1,0 +1,534 @@
+*tuskk.txt* SKK-like 日本語入力システム
+
+Author: kawarimidoll
+License: MIT https://github.com/kawarimidoll/tuskk.vim/blob/main/LICENSE
+
+==============================================================================
+INTRODUCTION                                              *tuskk-introduction*
+
+    *tuskk* (tˈʌsk) は ripgrep を利用して SKK ライクな日本語入力を行うプラグイ
+    ンです。
+    Vim および Neovim で動作します。
+
+REQUIREMENTS                                              *tuskk-requirements*
+
+    |keytrans()| および `:defer` が使用できるバージョンである必要があります。
+    なお、Vimではクラッシュバグの回避のため、 patch-9.0.2146 が必要です。
+
+    また、 ripgrep (https://github.com/BurntSushi/ripgrep) が必要です。
+
+==============================================================================
+INTERFACE                                                    *tuskk-interface*
+
+------------------------------------------------------------------------------
+HOOKS                                                            *tuskk-hooks*
+
+    Vim の |autocmd| 機能によるフック機能を提供しています。
+
+    設定の例:
+>
+    autocmd User tuskk_enable_pre echo "enable pre"
+<
+
+tuskk_initialize_pre                        *tuskk-hooks-tuskk_initialize_pre*
+
+    |tuskk#enable()| が実行される前に発生します。
+
+tuskk_initialize_post                      *tuskk-hooks-tuskk_initialize_post*
+
+    |tuskk#enable()| が実行された後に発生します。
+
+tuskk_enable_pre                                *tuskk-hooks-tuskk_enable_pre*
+
+    |tuskk#enable()| が実行される前に発生します。
+    既に有効化されていた場合は発生しません。
+
+tuskk_enable_post                              *tuskk-hooks-tuskk_enable_post*
+
+    |tuskk#enable()| が実行された後に発生します。
+    既に有効化されていた場合は発生しません。
+
+tuskk_disable_pre                              *tuskk-hooks-tuskk_disable_pre*
+
+    |tuskk#disable()| が実行される前に発生します。
+    既に無効化されていた場合は発生しません。
+
+tuskk_disable_post                            *tuskk-hooks-tuskk_disable_post*
+
+    |tuskk#disable()| が実行された後に発生します。
+    既に無効化されていた場合は発生しません。
+
+------------------------------------------------------------------------------
+FUNCTIONS                                                    *tuskk-functions*
+
+tuskk#initialize({opts})                                  *tuskk#initialize()*
+
+    tuskk を初期化します。
+    実行前に |tuskk_initialize_pre| が、実行後に |tuskk_initialize_post| が発
+    生します。
+    {opts} は |tuskk-options| に示すフィールドを持つ辞書です。
+
+    設定の例:
+
+>
+  call tuskk#initialize({
+      \ 'jisyo_list':  [
+      \   { 'path': '~/.cache/vim/SKK-JISYO.L', 'encoding': 'euc-jp' },
+      \   { 'path': '~/.cache/vim/SKK-JISYO.emoji', 'mark': '[E]' },
+      \ ],
+      \ 'kana_table': tuskk#opts#builtin_kana_table(),
+      \ 'suggest_wait_ms': 200,
+      \ 'suggest_sort_by': 'length',
+      \ 'merge_tsu': v:true,
+      \ 'trailing_n': v:true,
+      \ })
+<
+
+tuskk#enable()                                                *tuskk#enable()*
+
+    tuskk を有効化します。
+    実行前に |tuskk_enable_pre| が、実行後に |tuskk_enable_post| が発生します。
+    既に有効化されていた場合は処理を行わず、イベントも発生しません。
+
+    |tuskk#initialize()| の実行前に使用することはできません。
+
+tuskk#disable([{escape}])                                    *tuskk#disable()*
+
+    tuskk を無効化します。
+    実行前に |tuskk_disable_pre| が、実行後に |tuskk_disable_post| が発生しま
+    す。
+    オプションの {escape} に |truthy| な値を指定すると、挿入モードも終了します。
+    既に無効化されていた場合は処理を行わず、イベントも発生しません。
+
+    |tuskk#initialize()| の実行前に使用することはできません。
+
+tuskk#toggle()                                                *tuskk#toggle()*
+
+    tuskk が無効である場合には |tuskk#enable()| を、tuskk が有効である場合には
+    |tuskk#disable()| を、それぞれ実行します。
+
+    |tuskk#initialize()| の実行前に使用することはできません。
+
+tuskk#is_enabled()                                        *tuskk#is_enabled()*
+
+    tuskk が有効化されているかどうかを返します。
+
+tuskk#henkan_buffer(p1, p2, [{opts}])                  *tuskk#henkan_buffer()*
+
+    {p1} から {p2} の間の文字を使って変換を開始します。
+    {p1} および {p2} は [lnum, col] の2要素の配列です。
+
+    {opts} は次のフィールドを持つ辞書です:
+
+      - okuri (デフォルト "")
+        2点間のひらがなのうち、この文字列を送り仮名として変換を行います。
+      - exclusive (デフォルト v:false)
+        true の場合、最後の文字を変換範囲に含みません。
+      - stay (デフォルト v:false)
+        true の場合、 machi 状態になるだけで変換を開始しません。
+
+    {opts} のすべてのフィールドは任意です。
+
+    |tuskk#initialize()| の実行前に使用することはできません。
+
+tuskk#cmd_buf()                                                *tuskk#cmd_buf*
+
+    現在のコマンドラインの内容を反映した高さ1のバッファを開き、 tuskk が有効化
+    された状態で挿入モードを開始します。
+    このバッファで改行または挿入モードからの脱出を行うと、自動的にその内容をコ
+    マンドラインへ反映します。
+    |getcmdtype()| が : / ? のいずれかの場合のみ動作します。
+
+    |tuskk#initialize()| の実行前に使用することはできません。
+
+tuskk#open_user_jisyo()                              *tuskk#open_user_jisyo()*
+
+    ユーザー辞書 |tuskk-options-user_jisyo_path| を開きます。
+
+    |tuskk#initialize()| の実行前に使用することはできません。
+
+tuskk#opts#get({name})                                      *tuskk#opts#get()*
+
+    {name} に対応する |tuskk-options| の値を返します。
+
+tuskk#opts#builtin_kana_table()              *tuskk#opts#builtin_kana_table()*
+
+    標準のかなテーブルを返します。
+    この値を直接、または編集して |tuskk-options-kana_table| に指定することがで
+    きます。
+
+tuskk#opts#builtin_auto_henkan_characters() *tuskk#opts#builtin_auto_henkan_characters()*
+
+    標準の自動変換文字列を返します。
+    この値を直接、または編集して |tuskk-options-auto_henkan_characters| に指定
+    することができます。
+
+------------------------------------------------------------------------------
+OPTIONS                                                        *tuskk-options*
+
+    |tuskk#initialize()| に設定できる値について解説します。
+
+user_jisyo_path                                *tuskk-options-user_jisyo_path*
+
+    (デフォルト "~/.cache/vim/SKK-JISYO.user")
+    ユーザー辞書のパスです。 |expand()| で展開されます。
+    変換候補の検索と、ユーザー定義変換のために使用されます。
+
+jisyo_list                                          *tuskk-options-jisyo_list*
+
+    (デフォルト [])
+    変換辞書の設定のリストです。
+    リストの各項目は次のフィールドを持つ辞書です:
+
+      - path (必須)
+        辞書のパスです。 |expand()| で展開されます。
+      - encoding (デフォルト "auto")
+        辞書の文字エンコーディングです。
+      - mark (デフォルト "")
+        |complete-items| の menu に表示される文字列です。
+        辞書を複数使用している場合、どの辞書から検索された候補なのかを区別する
+        ために使用できます。
+
+    指定したリストにユーザー辞書 |tuskk-options-user_jisyo_path| が含まれてい
+    なかった場合、リストの先頭に `{ 'path': user_jisyo_path }` が追加されます。
+
+kana_table                                          *tuskk-options-kana_table*
+
+    (デフォルト {})
+    キー入力に対しバッファに出力する文字列を指定するための辞書です。
+    入出力だけでなく、変換などに使用するキーもここで指定します。
+    詳細は |tuskk-kana-table| を確認してください。
+    |tuskk#opts#builtin_kana_table()| の返り値を使用することができます。
+
+highlight_hanpa                                *tuskk-options-highlight_hanpa*
+
+    (デフォルト "")
+    通常入力中のキーのハイライトグループ名を指定します。
+    空文字を指定すると、カーソル左の文字のハイライトグループを使用します。
+
+highlight_machi                                *tuskk-options-highlight_machi*
+
+    (デフォルト "Search")
+    変換待機中のキーのハイライトグループ名を指定します。
+    空文字を指定すると、カーソル左の文字のハイライトグループを使用します。
+
+highlight_kouho                                *tuskk-options-highlight_kouho*
+
+    (デフォルト "IncSearch")
+    候補選択中のキーのハイライトグループ名を指定します。
+    空文字を指定すると、カーソル左の文字のハイライトグループを使用します。
+
+highlight_okuri                                *tuskk-options-highlight_okuri*
+
+    (デフォルト "ErrorMsg")
+    送り待機中のキーのハイライトグループ名を指定します。
+    空文字を指定すると、カーソル左の文字のハイライトグループを使用します。
+
+suggest_wait_ms                                *tuskk-options-suggest_wait_ms*
+
+    (デフォルト -1)
+    自動補完の待機時間(ミリ秒)です。負数の場合は自動補完を無効にします。
+    キー入力後、この時間を待たずに次の入力が加えられた場合は補完を表示しません。
+    小さい値を指定すると、全ての入力で即座に補完が行われるため、処理が遅くなる
+    恐れがあります。
+
+suggest_sort_by                                *tuskk-options-suggest_sort_by*
+
+    (デフォルト "jisyo")
+    自動補完の候補順序です。以下のいずれかを指定できます。
+      - "jisyo" |tuskk-options-jisyo_list| に指定した辞書の順序で候補を表示します。
+      - "code" 読みの文字コードの昇順で候補を表示します。五十音順になります。
+      - "length" 読みの文字数の昇順で候補を表示します。
+
+suggest_prefix_match_minimum      *tuskk-options-suggest_prefix_match_minimum*
+
+    (デフォルト 5)
+    自動補完で、前方一致検索を行う最小文字数です。これより文字数が少ない場合は
+    完全一致による検索が行われます。
+    小さい値を指定すると、全ての入力で前方一致検索が行われるため、処理が遅くな
+    る恐れがあります。
+    常に完全一致検索を行いたい場合は、999など大きな値を指定してください。
+
+auto_henkan_characters                  *tuskk-options-auto_henkan_characters*
+
+    (デフォルト "")
+    ここに指定した文字列に含まれる文字を変換待機中に入力すると、即座に検索が実
+    行され、候補選択状態に入ります。
+    |tuskk#opts#builtin_auto_henkan_characters()| の返り値を使用することができ
+    ます。
+    https://ddskk.readthedocs.io/ja/latest/06_apps.html#id77
+
+put_hanpa                                            *tuskk-options-put_hanpa*
+
+    (デフォルト v:false)
+    このオプションを有効にすると、かな入力に含まれなかったアルファベットをバッ
+    ファに残します。
+    例えば、「kpa」と入力すると「kぱ」と出力されます。
+    このアルファベットは確定したものとみなされ、後続のひらがなを削除しても、か
+    な入力のもとには使われません。
+
+textwidth_zero                                  *tuskk-options-textwidth_zero*
+
+    (デフォルト v:false)
+    このオプションを有効にすると、 tuskk が有効になっている間、 'textwidth'
+    を 0 に設定します。
+
+kakutei_unique                                  *tuskk-options-kakutei_unique*
+
+    (デフォルト v:false)
+    このオプションを有効にすると、変換候補が1つの場合、候補一覧を表示せず自動
+    で確定処理を行います。
+
+merge_tsu                                            *tuskk-options-merge_tsu*
+
+    (デフォルト v:false)
+    このオプションを有効にすると、変換時に「っ」が複数連続していた場合に1つに
+    まとめます。
+    例えば、「けっっか」を「結果」に変換できるようになります。
+
+trailing_n                                          *tuskk-options-trailing_n*
+
+    (デフォルト v:false)
+    このオプションを有効にすると、変換時に末尾に「n」があった場合に「ん」と解
+    釈します。
+    例えば、「へんかn」を「変換」に変換できるようになります。
+
+abbrev_ignore_case                          *tuskk-options-abbrev_ignore_case*
+
+    (デフォルト v:false)
+    このオプションを有効にすると、変換時にアルファベットの大文字・小文字を区別
+    しません。
+    abbrev モードでのみ意味があります。
+
+use_google_cgi                                  *tuskk-options-use_google_cgi*
+
+    (デフォルト v:false)
+    このオプションを有効にすると、変換候補一覧に [Google変換] という候補を追加
+    します。
+    これを確定すると、 curl コマンドを用いて Google 日本語入力 API を利用して
+    変換を行います。
+    Google変換によって得られた候補を確定した場合は、自動的にユーザー辞書の末尾
+    に追加されます。
+    https://www.google.co.jp/ime/cgiapi.html
+
+------------------------------------------------------------------------------
+KANA-TABLE                                                  *tuskk-kana-table*
+
+    かなテーブルに設定できる値について解説します。
+    |tuskk#opts#builtin_kana_table()| の返り値で確認することができます。
+
+                                                     *tuskk-kana-table-string*
+
+    かなテーブルは、キーに入力文字列、値に変換後の文字列を持つ辞書です。
+
+    設定の例:
+>
+  {
+    "a": "あ",
+    "ka": "か",
+    ...
+  }
+<
+
+    この場合、入力文字列が "a" の場合は "あ" に変換され、入力文字列が "ka" の
+    場合は "か" に変換されます。
+    また、これらの先頭に位置する文字 (この場合は "a" と "k" ) は、大文字で入力
+    することで変換開始位置として使用されます。
+    すなわち、 "A" あるいは "Ka" と入力することで変換を開始できます。
+    さらに、変換待機中に再度大文字を使用した入力を行うことで、送りあり変換を開
+    始します。
+
+    また、かなテーブルの値には、以下のキーを持つ辞書を指定することができます。
+
+mode                                                   *tuskk-kana-table-mode*
+
+    入力モードを指定します。
+    以下の値を指定できます。
+
+      - "hira" ひらがな
+      - "zen_kata" 全角カタカナ
+      - "han_kata" 半角カタカナ
+      - "zen_alnum" 全角英数
+      - "abbrev" 直接入力
+
+    通常の入力中に使用された場合は、入力モードを変更します。
+    モード変更後に再度使用された場合は、ひらがなモードへ戻ります。
+    変換待機中に使用された場合は、モードに基づいた変換を行い、即座に変換を確定
+    します。
+
+    設定の例:
+>
+  {
+    "q": { "mode": "zen_kata" },
+    ...
+  }
+<
+
+func                                                   *tuskk-kana-table-func*
+
+    tuskk 内部の機能を実行します。
+    以下の値を指定できます。
+
+"kakutei"                                      *tuskk-kana-table-func-kakutei*
+
+    入力を確定します。
+
+    設定の例:
+>
+  {
+    "<cr>": { "func": "kakutei" },
+    ...
+  }
+<
+
+"backspace"                                  *tuskk-kana-table-func-backspace*
+
+    一文字削除します。
+
+    設定の例:
+>
+  {
+    "<bs>": { "func": "backspace" },
+    ...
+  }
+<
+
+"sticky"                                        *tuskk-kana-table-func-sticky*
+
+    変換範囲を指定します。
+    通常入力中に使用された場合は、変換待機中になります。
+    変換待機中に使用された場合は、送り待機中になります。
+    候補選択中に使用された場合は、変換を確定し、再度変換待機中になります。
+
+    設定の例:
+>
+  {
+    ";": { "func": "sticky" },
+    ...
+  }
+<
+
+"henkan"                                        *tuskk-kana-table-func-henkan*
+
+    変換を開始します。
+    候補選択中に使用された場合は、次の候補を選択します。
+
+    設定の例:
+>
+  {
+    "<space>": { "func": "henkan" },
+    ...
+  }
+<
+
+"zengo"                                          *tuskk-kana-table-func-zengo*
+
+    接頭辞・接尾辞変換を行います。
+    通常入力中に使用された場合は、 sticky を使用してからこの func を指定したキ
+    ーを押したのと同じ状態になります。
+    変換待機中に使用された場合は、この func を指定したキーを押してから sticky
+    を使用したのと同じ状態になります。
+    https://ddskk.readthedocs.io/ja/latest/06_apps.html#id35
+
+    設定の例:
+>
+  {
+    ">": { "func": "zengo" },
+    ...
+  }
+<
+
+"extend"                                        *tuskk-kana-table-func-extend*
+
+    変換開始位置を左へ移動させます。
+    ただし、ひらがな以外の文字を範囲に含むことはできません。
+
+    設定の例:
+>
+  {
+    "<left>": { "func": "extend" },
+    ...
+  }
+<
+
+"shrink"                                        *tuskk-kana-table-func-shrink*
+
+    変換開始位置を右へ移動させます。
+    ただし、カーソルより右へは移動できません。
+
+    設定の例:
+>
+  {
+    "<right>": { "func": "shrink" },
+    ...
+  }
+<
+
+call                                                   *tuskk-kana-table-call*
+
+    文字列として指定した関数を実行します。
+    |tuskk-kana-table-args| で、関数に渡す引数を配列で指定できます。
+
+    設定の例:
+>
+  {
+    "<esc>": { "call": "tuskk#disable", "args": [true] },
+    ...
+  }
+<
+
+expr                                                   *tuskk-kana-table-expr*
+
+    文字列として指定した関数を実行し、その返り値をバッファに出力します。
+    |tuskk-kana-table-args| で、関数に渡す引数を配列で指定できます。
+
+    設定の例:
+>
+  {
+    "@": { "expr": "strftime", "args": ["%Y/%m/%d"] },
+    ...
+  }
+<
+
+args                                                   *tuskk-kana-table-args*
+
+    |tuskk-kana-table-call| または |tuskk-kana-table-expr| で指定した関数に渡
+    す引数を配列で指定します。
+
+    設定の例:
+>
+  {
+    "@": { "expr": "strftime", "args": ["%Y/%m/%d"] },
+    ...
+  }
+<
+
+==============================================================================
+FAQ                                                                *tuskk-faq*
+
+変換ができない~
+
+    変換を行うにはSKK用の辞書の設定が必要です。 |tuskk-options-jisyo_list|
+    https://skk-dev.github.io/dict/ で管理されているL辞書をダウンロードして
+    展開するのをおすすめします。
+
+他の入力系プラグインと干渉する~
+
+    tuskk を有効化、無効化する際にフック |tuskk-hooks| を使い、プラグイン側で
+    一時的に機能を無効化してください。
+
+    設定の例:
+>
+    augroup tuskk_other_plugin
+      autocmd!
+      autocmd User tuskk_enable_pre call other_plugin#disable()
+      autocmd User tuskk_disable_post call other_plugin#enable()
+    augroup END
+<
+
+==============================================================================
+CHANGELOG                                                    *tuskk-changelog*
+
+    pre-release
+
+vim:tw=78:fo=tcq2mM:ts=8:ft=help:norl
