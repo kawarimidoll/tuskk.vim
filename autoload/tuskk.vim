@@ -91,6 +91,9 @@ endfunction
 function s:feed(str) abort
   call feedkeys(a:str, 'ni')
 endfunction
+let s:is_dict = {item -> type(item) == v:t_dict}
+let s:is_string = {item -> type(item) == v:t_string}
+let s:has_key = {item, key -> s:is_dict(item) && has_key(item, key)}
 
 function s:current_complete_item() abort
   return s:latest_henkan_item
@@ -173,7 +176,7 @@ function tuskk#disable(escape = v:false) abort
 
   for k in s:keys_to_remaps
     try
-      if type(k) == v:t_string
+      if s:is_string(k)
         execute 'iunmap' k
       else
         call mapset('i', 0, k)
@@ -301,7 +304,7 @@ function s:on_complete_changed(event) abort
 
   " user_dataがない、またはあってもyomiがない場合は
   " このプラグインとは関係ない候補
-  let s:latest_henkan_item = (type(user_data) != v:t_dict || !has_key(user_data, 'yomi'))
+  let s:latest_henkan_item = !s:has_key(user_data, 'yomi')
         \ ? {}
         \ : a:event.completed_item
 
@@ -342,7 +345,7 @@ function s:get_spec(key) abort
   if has_key(tuskk#opts#get('kana_table'), current)
     let spec.reason = 'combined:found'
     " s:store.hanpaの残存文字と合わせて完成した場合
-    if type(tuskk#opts#get('kana_table')[current]) == v:t_dict
+    if s:is_dict(tuskk#opts#get('kana_table')[current])
       call extend(spec, tuskk#opts#get('kana_table')[current])
       return spec
     endif
@@ -364,7 +367,7 @@ function s:get_spec(key) abort
   if has_key(tuskk#opts#get('kana_table'), a:key)
     let spec.reason = 'alone:found'
     " 先行入力を無視して単体で完成した場合
-    if type(tuskk#opts#get('kana_table')[a:key]) == v:t_dict
+    if s:is_dict(tuskk#opts#get('kana_table')[a:key])
       call extend(spec, tuskk#opts#get('kana_table')[a:key])
       " 値が辞書ならput_hanpaに関らずstringは削除
       " storeに値を保存する
@@ -631,7 +634,7 @@ function s:handle_spec(args) abort
     elseif spec.func ==# 'kakutei'
       if s:is_tuskk_completed()
         let user_data = s:current_complete_item()->get('user_data', {})
-        if type(user_data) == v:t_dict && has_key(user_data, 'special')
+        if s:has_key(user_data, 'special')
           call timer_start(0, {->s:on_kakutei_special(user_data)})
         endif
       endif
