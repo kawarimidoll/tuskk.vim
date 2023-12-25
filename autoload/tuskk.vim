@@ -88,12 +88,27 @@ function s:phase_forget() abort
   let s:phase.reason = ''
 endfunction
 
-function s:feed(str) abort
-  call feedkeys(a:str, 'ni')
-endfunction
 let s:is_dict = {item -> type(item) == v:t_dict}
+let s:is_list = {item -> type(item) == v:t_list}
 let s:is_string = {item -> type(item) == v:t_string}
 let s:has_key = {item, key -> s:is_dict(item) && has_key(item, key)}
+let s:ensure_list = {item -> s:is_list(item) ? item : [item]}
+let s:throw = {msg -> execute($'throw {string(msg)}')}
+let s:recursive_feed_list = []
+function s:feed(feeds = []) abort
+  if !empty(a:feeds)
+    let s:recursive_feed_list = s:ensure_list(a:feeds)
+  elseif empty(s:recursive_feed_list)
+    return
+  endif
+  let proc = remove(s:recursive_feed_list, 0)
+  let feed = s:has_key(proc, 'call') ? [call(proc.call, get(proc, 'args', [])), ''][1]
+        \ : s:has_key(proc, 'expr') ? call(proc.expr, get(proc, 'args', []))
+        \ : s:has_key(proc, 'eval') ? eval(proc.eval)
+        \ : s:is_string(proc) ? proc
+        \ : s:throw('invalid proc ' .. string(proc))
+  return feedkeys(feed .. $"\<cmd>call {expand('<SID>')}feed()\<cr>", 'ni')
+endfunction
 
 function s:current_complete_item() abort
   return s:latest_henkan_item
