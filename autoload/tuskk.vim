@@ -251,33 +251,23 @@ function tuskk#henkan_buffer(p1, p2, opts = {}) abort
   call cursor(tuskk#utils#compare_pos(a:p1, a:p2) > 0 ? a:p2 : a:p1)
 
   let stay = get(a:opts, 'stay', v:false)
-  let s:henkan_buffer_context = { 'machi': machi, 'okuri': okuri, 'stay': stay }
-  let feed = "\<esc>"
-  let feed ..= exclusive ? 'i' : 'a'
-  let feed ..= $"\<cmd>call {expand('<SID>')}henkan_buffer_2()\<cr>"
-  call s:feed(feed)
-endfunction
-" feedkeysを挟んだ処理の前後関係を保証するため、関数を複数に分ける
-function s:henkan_buffer_2() abort
-  let target = s:henkan_buffer_context.machi .. s:henkan_buffer_context.okuri
-  let feed = repeat("\<bs>", strcharlen(target))
-  let feed ..= $"\<cmd>call tuskk#enable()\<cr>\<cmd>call {expand('<SID>')}henkan_buffer_3()\<cr>"
-  call s:feed(feed)
-endfunction
-function s:henkan_buffer_3() abort
-  call s:f('store#set', 'machi', s:henkan_buffer_context.machi)
-  call s:f('store#set', 'okuri', s:henkan_buffer_context.okuri)
-  let next_phase = s:henkan_buffer_context.okuri ==# '' ? 'machi' : 'okuri'
-  call s:phase_set(next_phase, 'henkan_buffer')
-  call s:display_marks()
-  if s:henkan_buffer_context.stay
-    return
-  endif
-  let feed = s:henkan_start()
+  let bslen = strcharlen(machi .. okuri)
+  let next_phase = okuri ==# '' ? 'machi' : 'okuri'
+  let feed = [
+        \ $"\<esc>{exclusive ? 'i' : 'a'}",
+        \ repeat("\<bs>", bslen),
+        \ {'call': 'tuskk#enable'},
+        \ {'call': 's:f', 'args': ['store#set', 'machi', machi]},
+        \ {'call': 's:f', 'args': ['store#set', 'okuri', okuri]},
+        \ {'call': 's:phase_set', 'args': [next_phase, 'henkan_buffer']},
+        \ {'call': 's:display_marks'},
+        \ stay ? '' : {'call': 's:henkan_start'},
+        \ ]
   call s:feed(feed)
 endfunction
 " xnoremap K <cmd>call tuskk#henkan_buffer(getpos('.')[1:2], getpos('v')[1:2], {'okuri':'り'})<cr>
 " xnoremap K <cmd>call tuskk#henkan_buffer(getpos('.')[1:2], getpos('v')[1:2], {'stay':1})<cr>
+" xnoremap K <cmd>call tuskk#henkan_buffer(getpos('.')[1:2], getpos('v')[1:2])<cr>
 
 function s:on_kakutei_special(user_data) abort
   let context = a:user_data.context
