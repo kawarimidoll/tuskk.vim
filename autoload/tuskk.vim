@@ -172,6 +172,8 @@ function tuskk#enable() abort
     let s:save_textwidth = &textwidth
     set textwidth=0
   endif
+  let s:save_completeopt = &completeopt
+  set completeopt=menuone,noselect
 
   call tuskk#mode#clear()
   call tuskk#clear_state('enable')
@@ -206,6 +208,8 @@ function tuskk#disable(escape = v:false) abort
     let &textwidth = s:save_textwidth
     unlet! s:save_textwidth
   endif
+  let &completeopt = s:save_completeopt
+  unlet! s:save_completeopt
 
   call tuskk#mode#clear()
   call tuskk#clear_state('disable')
