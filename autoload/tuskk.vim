@@ -576,7 +576,7 @@ function s:ins(key, with_sticky = v:false) abort
     let feed = s:handle_spec({ 'string': '', 'store': '', 'func': 'sticky' })
 
     let key = a:key->tolower()
-    call s:feed(tuskk#utils#trans_special_key(feed) .. $"\<cmd>call {expand('<SID>')}ins('{key}')\<cr>")
+    call s:feed([tuskk#utils#trans_special_key(feed), {'call': 's:ins', 'args': [key]}])
     return
   endif
 
@@ -586,7 +586,7 @@ function s:ins(key, with_sticky = v:false) abort
         \ && get(spec, 'mode', '') ==# ''
         \ && index(['kakutei', 'backspace', 'henkan'], get(spec, 'func', '')) < 0
     let feed = s:handle_spec({ 'string': '', 'store': '', 'key': '', 'func': 'kakutei' })
-    call s:feed(tuskk#utils#trans_special_key(feed) .. $"\<cmd>call {expand('<SID>')}ins('{a:key}')\<cr>")
+    call s:feed([tuskk#utils#trans_special_key(feed), {'call': 's:ins', 'args': [a:key]}])
     return
   endif
 
@@ -603,7 +603,7 @@ function s:ins(key, with_sticky = v:false) abort
       call s:feed("\<c-e>")
     endif
   else
-    call s:feed(tuskk#utils#trans_special_key(feed) .. $"\<cmd>call {expand('<SID>')}display_marks()\<cr>")
+    call s:feed([tuskk#utils#trans_special_key(feed), {'call': 's:display_marks'}])
   endif
 endfunction
 
