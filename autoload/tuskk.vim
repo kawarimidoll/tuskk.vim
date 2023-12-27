@@ -483,7 +483,7 @@ function s:henkan(fallback_key) abort
   return feed
 endfunction
 
-function s:feed_close_pum() abort
+function s:feed_ensure_close_pum() abort
   return pumvisible() && s:f('store#is_blank', 'machi') ? "\<c-e>" : ''
 endfunction
 function s:suggest_reserve() abort
@@ -523,7 +523,7 @@ function s:ins(key, with_sticky = v:false) abort
   let feed = [
         \ s:handle_spec(spec),
         \ {'call': 's:display_marks'},
-        \ {'expr': 's:feed_close_pum'},
+        \ {'expr': 's:feed_ensure_close_pum'},
         \ {'call': 's:suggest_reserve'},
         \ ]
 
