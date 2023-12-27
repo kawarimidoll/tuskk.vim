@@ -66,24 +66,14 @@ function tuskk#cmd_buf() abort
   call s:f('cmd_buf#start')
 endfunction
 
-" function s:phase_get() abort
-"   return s:phase
-" endfunction
-
-function s:phase_is(name) abort
-  return s:phase.current ==# a:name
-endfunction
-
-function s:phase_was(name) abort
-  return s:phase.previous ==# a:name
-endfunction
-
+let s:phase_get = {-> s:phase}
+let s:phase_is = {name -> s:phase.current ==# name}
+let s:phase_was = {name -> s:phase.previous ==# name}
 function s:phase_set(name, reason = '') abort
   let s:phase.previous = s:phase.current
   let s:phase.current = a:name
   let s:phase.reason = a:reason
 endfunction
-
 function s:phase_forget() abort
   let s:phase.previous = ''
   let s:phase.reason = ''
