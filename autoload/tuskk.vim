@@ -26,13 +26,17 @@ if !exists('s:phase')
     endfor
   endfunction
   function s:f(funcname, ...) abort
-    return call(s:sid_functions[a:funcname], a:000)
+    try
+      return call(s:sid_functions[a:funcname], a:000)
+    catch /^Vim\%((\a\+)\)\=:E716:/
+      call s:import('tuskk/' .. a:funcname->substitute('#.*', '', ''))
+      return call(s:sid_functions[a:funcname], a:000)
+    endtry
   endfunction
 
   function tuskk#initialize(opts) abort
     call tuskk#utils#do_user('tuskk_initialize_pre')
     defer tuskk#utils#do_user('tuskk_initialize_post')
-    call s:import('tuskk/opts')
 
     try
       call s:f('opts#parse', a:opts)
@@ -53,9 +57,6 @@ if !exists('s:phase')
   finish
 endif
 
-call s:import('tuskk/store')
-call s:import('tuskk/user_jisyo')
-call s:import('tuskk/cmd_buf')
 
 function tuskk#open_user_jisyo() abort
   call s:f('user_jisyo#open')
