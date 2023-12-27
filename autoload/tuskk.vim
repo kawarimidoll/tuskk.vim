@@ -107,7 +107,7 @@ function s:feed(feeds = []) abort
         \ : s:has_key(proc, 'eval') ? eval(proc.eval)
         \ : s:is_string(proc) ? proc
         \ : s:throw('invalid proc ' .. string(proc))
-  return feedkeys(feed .. $"\<cmd>call {expand('<SID>')}feed()\<cr>", 'ni')
+  return feedkeys(tuskk#utils#trans_special_key(feed) .. $"\<cmd>call {expand('<SID>')}feed()\<cr>", 'ni')
 endfunction
 
 function s:current_complete_item() abort
@@ -546,7 +546,7 @@ function s:kakutei(fallback_key) abort
   if tuskk#mode#is_start_sticky()
     call tuskk#mode#set('hira')
   endif
-  return feed ?? tuskk#utils#trans_special_key(a:fallback_key)
+  return feed ?? a:fallback_key
 endfunction
 
 function s:henkan(fallback_key) abort
@@ -562,49 +562,57 @@ function s:henkan(fallback_key) abort
     endif
     let feed = s:henkan_start()
   else
-    let feed = s:f('store#get', 'hanpa') .. tuskk#utils#trans_special_key(a:fallback_key)
+    let feed = s:f('store#get', 'hanpa') .. a:fallback_key
   endif
   call s:f('store#clear', 'hanpa')
   return feed
 endfunction
 
+function s:feed_close_pum() abort
+  return pumvisible() && s:f('store#is_blank', 'machi') ? "\<c-e>" : ''
+endfunction
+function s:suggest_reserve() abort
+  if tuskk#opts#get('suggest_wait_ms') < 0 || !s:phase_is('machi')
+    return
+  endif
+  let current_machi = s:f('store#get', 'machi')
+  if s:last_machi != current_machi
+    call tuskk#utils#debounce(funcref('s:suggest_start'), tuskk#opts#get('suggest_wait_ms'))
+    let s:last_machi = current_machi
+  endif
+endfunction
+
 function s:ins(key, with_sticky = v:false) abort
   call s:phase_forget()
+  let key = a:key
   if a:with_sticky && !(a:key =~ '^[!-~]$' && tuskk#mode#is_direct())
 
     " TODO direct modeの変換候補を選択した状態で大文字を入力した場合の対処
     let feed = s:handle_spec({ 'string': '', 'store': '', 'func': 'sticky' })
 
     let key = a:key->tolower()
-    call s:feed([tuskk#utils#trans_special_key(feed), {'call': 's:ins', 'args': [key]}])
+    call s:feed([feed, {'call': 's:ins', 'args': [key]}])
     return
   endif
 
-  let spec = s:get_spec(a:key)
+  let spec = s:get_spec(key)
 
   if s:is_tuskk_completed()
         \ && get(spec, 'mode', '') ==# ''
         \ && index(['kakutei', 'backspace', 'henkan'], get(spec, 'func', '')) < 0
     let feed = s:handle_spec({ 'string': '', 'store': '', 'key': '', 'func': 'kakutei' })
-    call s:feed([tuskk#utils#trans_special_key(feed), {'call': 's:ins', 'args': [a:key]}])
+    call s:feed([feed, {'call': 's:ins', 'args': [key]}])
     return
   endif
 
-  let feed = s:handle_spec(spec)
+  let feed = [
+        \ s:handle_spec(spec),
+        \ {'call': 's:display_marks'},
+        \ {'expr': 's:feed_close_pum'},
+        \ {'call': 's:suggest_reserve'},
+        \ ]
 
-  if s:phase_is('machi') && s:last_machi != s:f('store#get', 'machi') && tuskk#opts#get('suggest_wait_ms') >= 0
-    call tuskk#utils#debounce(funcref('s:suggest_start'), tuskk#opts#get('suggest_wait_ms'))
-  endif
-  let s:last_machi = s:f('store#get', 'machi')
-
-  if feed ==# ''
-    call s:display_marks()
-    if s:phase_was('machi') && s:phase_is('hanpa') && pumvisible()
-      call s:feed("\<c-e>")
-    endif
-  else
-    call s:feed([tuskk#utils#trans_special_key(feed), {'call': 's:display_marks'}])
-  endif
+  call s:feed(feed)
 endfunction
 
 function s:handle_spec(args) abort
