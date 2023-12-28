@@ -43,9 +43,10 @@ if !exists('s:phase')
       return
     endtry
 
-    let s:phase = { 'current': '', 'previous': '', 'reason': '', 'kouho': v:false }
-
-    execute 'autocmd FuncUndefined tuskk#* ++once source ' .. expand('<script>')
+    if !exists('s:phase')
+      let s:phase = { 'current': '', 'previous': '', 'reason': '', 'kouho': v:false }
+      execute 'autocmd FuncUndefined tuskk#* ++once source ' .. expand('<script>')
+    endif
   endfunction
 
   function tuskk#is_enabled() abort
