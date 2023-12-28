@@ -509,7 +509,7 @@ function s:ins(key, with_sticky = v:false) abort
 
   let spec = s:f('spec#get', key, s:f('store#get', 'hanpa'))
 
-  if s:is_tuskk_completed() && pumvisible()
+  if s:is_tuskk_completed() && complete_info().selected >= 0
         \ && get(spec, 'mode', '') ==# ''
         \ && index(['kakutei', 'backspace', 'henkan'], get(spec, 'func', '')) < 0
     call insert(feed, {'expr': 's:handle_spec', 'args': [{'func': 'kakutei'}]})
