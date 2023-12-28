@@ -131,7 +131,7 @@ function tuskk#enable() abort
 
   augroup tuskk_inner_augroup
     autocmd!
-    autocmd CompleteChanged * call s:on_complete_changed(v:event)
+    autocmd CompleteChanged * call s:on_complete_changed(v:event.completed_item)
     " 変換が確定したらlatest_henkan_itemをクリアする
     " is_tuskk_completedがfalseなのにselectedが有効値の場合は
     " このプラグイン以外の候補が選択されたと判断して状態をクリアする
@@ -301,14 +301,12 @@ function s:on_kakutei_special(user_data) abort
   call tuskk#utils#echoerr('未実装 ' .. special)
 endfunction
 
-function s:on_complete_changed(event) abort
-  let user_data = get(a:event.completed_item, 'user_data', {})
+function s:on_complete_changed(completed_item) abort
+  let user_data = get(a:completed_item, 'user_data', {})
 
   " user_dataがない、またはあってもyomiがない場合は
   " このプラグインとは関係ない候補
-  let s:latest_henkan_item = !s:has_key(user_data, 'yomi')
-        \ ? {}
-        \ : a:event.completed_item
+  let s:latest_henkan_item = s:has_key(user_data, 'yomi') ? a:completed_item : {}
 
   " kouhoを設定
   " 有効な候補が無い場合は空文字
