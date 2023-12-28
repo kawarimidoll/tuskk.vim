@@ -83,7 +83,7 @@ let s:is_list = {item -> type(item) == v:t_list}
 let s:is_string = {item -> type(item) == v:t_string}
 let s:has_key = {item, key -> s:is_dict(item) && has_key(item, key)}
 let s:ensure_list = {item -> s:is_list(item) ? item : [item]}
-let s:throw = {msg -> execute($'throw {string(msg)}')}
+" let s:throw = {msg -> execute($'throw {string(msg)}')}
 let s:recursive_feed_list = []
 function s:feed(feeds = []) abort
   if !empty(a:feeds)
@@ -95,8 +95,11 @@ function s:feed(feeds = []) abort
   let feed = s:has_key(proc, 'call') ? [call(proc.call, get(proc, 'args', [])), ''][1]
         \ : s:has_key(proc, 'expr') ? call(proc.expr, get(proc, 'args', []))
         \ : s:has_key(proc, 'eval') ? eval(proc.eval)
-        \ : s:is_string(proc) ? proc
-        \ : s:throw('invalid proc ' .. string(proc))
+        \ : proc
+  if s:is_list(feed)
+    call extend(s:recursive_feed_list, feed, 0)
+    let feed = ''
+  endif
   return feedkeys(tuskk#utils#trans_special_key(feed) .. $"\<cmd>call {expand('<SID>')}feed()\<cr>", 'ni')
 endfunction
 
