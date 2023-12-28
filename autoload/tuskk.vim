@@ -501,32 +501,28 @@ endfunction
 function s:ins(key, with_sticky = v:false) abort
   call s:phase_forget()
   let key = a:key
+
+  let feed = []
   if a:with_sticky && !(a:key =~ '^[!-~]$' && tuskk#mode#is_direct())
-
     " TODO direct modeの変換候補を選択した状態で大文字を入力した場合の対処
-    let feed = s:handle_spec({ 'string': '', 'store': '', 'func': 'sticky' })
-
     let key = a:key->tolower()
-    call s:feed([feed, {'call': 's:ins', 'args': [key]}])
-    return
+    call add(feed, {'expr': 's:handle_spec', 'args': [{'func': 'sticky'}]})
   endif
 
   let spec = s:f('spec#get', key, s:f('store#get', 'hanpa'))
 
-  if s:is_tuskk_completed()
+  if s:is_tuskk_completed() && pumvisible()
         \ && get(spec, 'mode', '') ==# ''
         \ && index(['kakutei', 'backspace', 'henkan'], get(spec, 'func', '')) < 0
-    let feed = s:handle_spec({ 'string': '', 'store': '', 'key': '', 'func': 'kakutei' })
-    call s:feed([feed, {'call': 's:ins', 'args': [key]}])
-    return
+    call insert(feed, {'expr': 's:handle_spec', 'args': [{'func': 'kakutei'}]})
   endif
 
-  let feed = [
-        \ s:handle_spec(spec),
+  call extend(feed, [
+        \ {'expr': 's:handle_spec', 'args': [spec]},
         \ {'call': 's:display_marks'},
         \ {'expr': 's:feed_ensure_close_pum'},
         \ {'call': 's:suggest_reserve'},
-        \ ]
+        \ ])
 
   call s:feed(feed)
 endfunction
