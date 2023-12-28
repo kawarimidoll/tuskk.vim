@@ -133,10 +133,9 @@ function tuskk#enable() abort
     " 変換が確定したらlatest_henkan_itemをクリアする
     " is_tuskk_completedがfalseなのにselectedが有効値の場合は
     " このプラグイン以外の候補が選択されたと判断して状態をクリアする
+          " \   let s:latest_henkan_item = {}
     autocmd CompleteDone *
-          \   if s:is_tuskk_completed()
-          \ |   let s:latest_henkan_item = {}
-          \ | elseif complete_info().selected >= 0
+          \   if complete_info().selected >= 0
           \ |   call tuskk#clear_state('CompleteDone')
           \ | endif
     " InsertLeaveだと<c-c>を使用した際に発火しないため
@@ -448,6 +447,7 @@ function s:backspace() abort
 endfunction
 
 function s:kakutei(fallback_key) abort
+  defer execute('let s:latest_henkan_item = {}')
   if !s:is_tuskk_completed() && complete_info().selected >= 0
     return "\<c-y>"
   endif
