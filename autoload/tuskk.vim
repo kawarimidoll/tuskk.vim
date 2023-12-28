@@ -10,26 +10,24 @@ endif
 " :h write-plugin-quickload
 if !exists('s:phase')
   " function import system
+  " s:f('file#func', arg1, arg2, ...)
   let s:sid_functions = {}
-  function s:import(filename) abort
-    let path = $"{expand('<script>:p:h')}/{a:filename}.vim"
-    execute 'source' path
-    let sid = getscriptinfo({'name': path})[0].sid
-    let functions = getscriptinfo({'sid': sid})[0].functions
-    let filename = substitute(a:filename, '.*/', '', '')
-    let prefix = '^<SNR>\d\+_export_'
-    for funcname in functions
-      if funcname =~ prefix
-        let keyname = filename .. substitute(funcname, prefix, '#', '')
-        let s:sid_functions[keyname] = funcname
-      endif
-    endfor
-  endfunction
   function s:f(funcname, ...) abort
     try
       return call(s:sid_functions[a:funcname], a:000)
     catch /^Vim\%((\a\+)\)\=:E716:/
-      call s:import('tuskk/' .. a:funcname->substitute('#.*', '', ''))
+      let filename = substitute(a:funcname, '#.*', '', '')
+      let path = $"{expand('<script>:p:h')}/tuskk/{filename}.vim"
+      execute 'source' path
+      let sid = getscriptinfo({'name': path})[0].sid
+      let functions = getscriptinfo({'sid': sid})[0].functions
+      let prefix = '^<SNR>\d\+_export_'
+      for funcname in functions
+        if funcname =~ prefix
+          let keyname = filename .. substitute(funcname, prefix, '#', '')
+          let s:sid_functions[keyname] = funcname
+        endif
+      endfor
       return call(s:sid_functions[a:funcname], a:000)
     endtry
   endfunction
