@@ -51,11 +51,8 @@ function tuskk#utils#echoerr(...) abort
   echohl NONE
 endfunction
 
-function tuskk#utils#debug_log(contents) abort
-  let contents = type(a:contents) == v:t_list ? mapnew(a:contents, 'json_encode(v:val)')
-        \ : type(a:contents) == v:t_dict ? json_encode(a:contents)
-        \ : [a:contents]
-  call writefile(contents, './debug.log', 'a')
+function tuskk#utils#debug_log(...) abort
+  call writefile(mapnew(a:000, 'json_encode(v:val)'), tuskk#opts#get('debug_log_path'), 'a')
 endfunction
 
 let consonant_list = [

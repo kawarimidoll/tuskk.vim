@@ -28,6 +28,7 @@ call tuskk#initialize({
       \ 'trailing_n': v:true,
       \ 'abbrev_ignore_case': v:true,
       \ 'put_hanpa': v:true,
+      \ 'debug_log_path': './local.log',
       \ })
 
 " edit ./autoload/tuskk.vim

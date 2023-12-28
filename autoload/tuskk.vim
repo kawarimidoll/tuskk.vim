@@ -522,6 +522,9 @@ function s:ins(key, with_sticky = v:false) abort
         \ {'call': 's:suggest_reserve'},
         \ ])
 
+  if !empty(tuskk#opts#get('debug_log_path'))
+    call tuskk#utils#debug_log(feed, s:f('store#get_all'))
+  endif
   call s:feed(feed)
 endfunction
 
