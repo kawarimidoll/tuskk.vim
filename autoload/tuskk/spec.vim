@@ -20,7 +20,7 @@ function s:export_get(key, preceding) abort
   " string: バッファに書き出す文字列
   " store: ローマ字入力バッファの文字列（上書き）
   " その他：関数など func / mode / expr
-  let spec = { 'string': '', 'store': '', 'key': a:key }
+  let spec = { 'key': a:key }
 
   let current = a:preceding .. a:key
   if has_key(tuskk#opts#get('kana_table'), current)

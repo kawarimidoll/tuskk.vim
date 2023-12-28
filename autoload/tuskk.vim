@@ -532,7 +532,7 @@ function s:ins(key, with_sticky = v:false) abort
 endfunction
 
 function s:handle_spec(args) abort
-  let spec = a:args
+  let spec = extend({'string': '', 'store': '', 'key': ''}, a:args)
 
   if !s:is_tuskk_completed() && get(spec, 'key', '') =~ '^[!-~]$' && tuskk#mode#is_direct()
     let spec = { 'string': spec.key, 'store': '', 'key': spec.key }
