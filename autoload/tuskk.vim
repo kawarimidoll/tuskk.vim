@@ -97,6 +97,7 @@ function s:feed(feeds = []) abort
   let feed = s:has_key(proc, 'call') ? [call(proc.call, get(proc, 'args', [])), ''][1]
         \ : s:has_key(proc, 'expr') ? call(proc.expr, get(proc, 'args', []))
         \ : s:has_key(proc, 'eval') ? eval(proc.eval)
+        \ : s:has_key(proc, 'exec') ? [execute(proc.exec), ''][1]
         \ : proc
   if s:is_list(feed)
     call extend(s:recursive_feed_list, feed, 0)
