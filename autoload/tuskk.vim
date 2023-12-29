@@ -399,15 +399,14 @@ function s:zengo(key) abort
     return ''
   endif
   if s:phase_is('okuri')
-  " nop
+    " nop
+    return ''
   elseif s:phase_is('machi')
     call s:f('store#push', 'machi', a:key)
-    let feed = s:henkan('')
-  else
-    call s:phase_set('machi', 'zengo: start machi')
-    let feed = a:key
+    return [s:henkan(''), {'call': 's:let', 'args': ['phase.kouho', v:true]}]
   endif
-  return feed
+  call s:phase_set('machi', 'zengo: start machi')
+  return a:key
 endfunction
 
 function s:sticky() abort
@@ -451,7 +450,7 @@ function s:backspace() abort
   return feed
 endfunction
 
-function s:kakutei(fallback_key) abort
+function s:kakutei(fallback_key = '') abort
   defer execute('let s:latest_henkan_item = {}')
   if !s:is_tuskk_completed() && complete_info().selected >= 0
     return "\<c-y>"
@@ -548,18 +547,15 @@ function s:handle_spec(args) abort
   " 多重コンバートを防止
   let allow_convert = v:true
 
-  " 末尾でstickyを実行するかどうかのフラグ
-  " 変換候補選択中にstickyを実行した場合、いちど確定してからstickyを実行するため、
-  " このフラグを見て実行を後回しにする必要がある
-  let after_sticky = v:false
-
   let feed = ''
   if has_key(spec, 'func')
     " handle func
     if spec.func ==# 'sticky'
       if s:is_tuskk_completed()
-        let feed = s:kakutei('')
-        let after_sticky = v:true
+        let feed = [
+              \ {'expr': 's:kakutei'},
+              \ {'expr': 's:sticky'},
+              \ ]
       else
         let feed = s:sticky()
       endif
@@ -579,12 +575,7 @@ function s:handle_spec(args) abort
       let feed = s:henkan(spec.key)
       let next_kouho = v:true
     elseif spec.func ==# 'zengo'
-      if s:is_tuskk_completed()
-        let feed = s:kakutei('')
-        let feed ..= s:zengo(spec.key)
-      else
-        let feed = s:zengo(spec.key)
-      endif
+      let feed = s:zengo(spec.key)
     elseif spec.func ==# 'extend'
       call s:f('store#hide')
       let char = tuskk#utils#leftchar()
@@ -623,7 +614,7 @@ function s:handle_spec(args) abort
     else
       call tuskk#mode#set_alt(spec.mode)
       if tuskk#mode#is_start_sticky()
-        let after_sticky = v:true
+        let feed = [{'expr': 's:sticky'}]
       endif
     endif
   elseif has_key(spec, 'expr')
@@ -641,14 +632,14 @@ function s:handle_spec(args) abort
 
   if allow_convert
     " TODO カタカナモードでも変換できるようにする
-    let feed = tuskk#mode#convert(feed)
+    if s:is_list(feed)
+      call map(feed, {_,v->s:is_string(v) ? tuskk#mode#convert(v) : v})
+    elseif s:is_string(feed)
+      let feed = tuskk#mode#convert(feed)
+    endif
   endif
 
-  if after_sticky
-    let feed ..= $"\<cmd>call {expand('<SID>')}sticky()\<cr>"
-  endif
-
-  if s:phase_is('hanpa') || tuskk#utils#hasunprintable(feed)
+  if !s:is_string(feed) || s:phase_is('hanpa') || tuskk#utils#hasunprintable(feed)
     return feed
   elseif s:phase_is('machi')
     if tuskk#opts#get('auto_henkan_characters') =~# tuskk#utils#lastchar(feed)
