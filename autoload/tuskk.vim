@@ -77,6 +77,9 @@ function s:phase_forget() abort
   let s:phase.reason = ''
 endfunction
 
+function s:let(name, value) abort
+  call execute($'let s:{a:name} = {string(a:value)}')
+endfunction
 let s:is_dict = {item -> type(item) == v:t_dict}
 let s:is_list = {item -> type(item) == v:t_list}
 let s:is_string = {item -> type(item) == v:t_string}
