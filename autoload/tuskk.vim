@@ -10,26 +10,24 @@ endif
 " :h write-plugin-quickload
 if !exists('s:phase')
   " function import system
+  " s:f('file#func', arg1, arg2, ...)
   let s:sid_functions = {}
-  function s:import(filename) abort
-    let path = $"{expand('<script>:p:h')}/{a:filename}.vim"
-    execute 'source' path
-    let sid = getscriptinfo({'name': path})[0].sid
-    let functions = getscriptinfo({'sid': sid})[0].functions
-    let filename = substitute(a:filename, '.*/', '', '')
-    let prefix = '^<SNR>\d\+_export_'
-    for funcname in functions
-      if funcname =~ prefix
-        let keyname = filename .. substitute(funcname, prefix, '#', '')
-        let s:sid_functions[keyname] = funcname
-      endif
-    endfor
-  endfunction
   function s:f(funcname, ...) abort
     try
       return call(s:sid_functions[a:funcname], a:000)
     catch /^Vim\%((\a\+)\)\=:E716:/
-      call s:import('tuskk/' .. a:funcname->substitute('#.*', '', ''))
+      let filename = substitute(a:funcname, '#.*', '', '')
+      let path = $"{expand('<script>:p:h')}/tuskk/{filename}.vim"
+      execute 'source' path
+      let sid = getscriptinfo({'name': path})[0].sid
+      let functions = getscriptinfo({'sid': sid})[0].functions
+      let prefix = '^<SNR>\d\+_export_'
+      for funcname in functions
+        if funcname =~ prefix
+          let keyname = filename .. substitute(funcname, prefix, '#', '')
+          let s:sid_functions[keyname] = funcname
+        endif
+      endfor
       return call(s:sid_functions[a:funcname], a:000)
     endtry
   endfunction
@@ -45,9 +43,10 @@ if !exists('s:phase')
       return
     endtry
 
-    let s:phase = { 'current': '', 'previous': '', 'reason': '', 'kouho': v:false }
-
-    execute 'autocmd FuncUndefined tuskk#* ++once source ' .. expand('<script>')
+    if !exists('s:phase')
+      let s:phase = { 'current': '', 'previous': '', 'reason': '', 'kouho': v:false }
+      execute 'autocmd FuncUndefined tuskk#* ++once source ' .. expand('<script>')
+    endif
   endfunction
 
   function tuskk#is_enabled() abort
@@ -56,7 +55,6 @@ if !exists('s:phase')
 
   finish
 endif
-
 
 function tuskk#open_user_jisyo() abort
   call s:f('user_jisyo#open')
@@ -79,12 +77,15 @@ function s:phase_forget() abort
   let s:phase.reason = ''
 endfunction
 
+function s:let(name, value) abort
+  call execute($'let s:{a:name} = {string(a:value)}')
+endfunction
 let s:is_dict = {item -> type(item) == v:t_dict}
 let s:is_list = {item -> type(item) == v:t_list}
 let s:is_string = {item -> type(item) == v:t_string}
 let s:has_key = {item, key -> s:is_dict(item) && has_key(item, key)}
 let s:ensure_list = {item -> s:is_list(item) ? item : [item]}
-let s:throw = {msg -> execute($'throw {string(msg)}')}
+" let s:throw = {msg -> execute($'throw {string(msg)}')}
 let s:recursive_feed_list = []
 function s:feed(feeds = []) abort
   if !empty(a:feeds)
@@ -96,8 +97,12 @@ function s:feed(feeds = []) abort
   let feed = s:has_key(proc, 'call') ? [call(proc.call, get(proc, 'args', [])), ''][1]
         \ : s:has_key(proc, 'expr') ? call(proc.expr, get(proc, 'args', []))
         \ : s:has_key(proc, 'eval') ? eval(proc.eval)
-        \ : s:is_string(proc) ? proc
-        \ : s:throw('invalid proc ' .. string(proc))
+        \ : s:has_key(proc, 'exec') ? [execute(proc.exec), ''][1]
+        \ : proc
+  if s:is_list(feed)
+    call extend(s:recursive_feed_list, feed, 0)
+    let feed = ''
+  endif
   return feedkeys(tuskk#utils#trans_special_key(feed) .. $"\<cmd>call {expand('<SID>')}feed()\<cr>", 'ni')
 endfunction
 
@@ -129,14 +134,13 @@ function tuskk#enable() abort
 
   augroup tuskk_inner_augroup
     autocmd!
-    autocmd CompleteChanged * call s:on_complete_changed(v:event)
+    autocmd CompleteChanged * call s:on_complete_changed(v:event.completed_item)
     " 変換が確定したらlatest_henkan_itemをクリアする
     " is_tuskk_completedがfalseなのにselectedが有効値の場合は
     " このプラグイン以外の候補が選択されたと判断して状態をクリアする
+          " \   let s:latest_henkan_item = {}
     autocmd CompleteDone *
-          \   if s:is_tuskk_completed()
-          \ |   let s:latest_henkan_item = {}
-          \ | elseif complete_info().selected >= 0
+          \   if complete_info().selected >= 0
           \ |   call tuskk#clear_state('CompleteDone')
           \ | endif
     " InsertLeaveだと<c-c>を使用した際に発火しないため
@@ -299,14 +303,12 @@ function s:on_kakutei_special(user_data) abort
   call tuskk#utils#echoerr('未実装 ' .. special)
 endfunction
 
-function s:on_complete_changed(event) abort
-  let user_data = get(a:event.completed_item, 'user_data', {})
+function s:on_complete_changed(completed_item) abort
+  let user_data = get(a:completed_item, 'user_data', {})
 
   " user_dataがない、またはあってもyomiがない場合は
   " このプラグインとは関係ない候補
-  let s:latest_henkan_item = !s:has_key(user_data, 'yomi')
-        \ ? {}
-        \ : a:event.completed_item
+  let s:latest_henkan_item = s:has_key(user_data, 'yomi') ? a:completed_item : {}
 
   " kouhoを設定
   " 有効な候補が無い場合は空文字
@@ -317,81 +319,6 @@ function s:on_complete_changed(event) abort
         \ : get(s:latest_henkan_item, 'abbr', '')
   call s:f('store#set', 'kouho', kouho)
   call s:display_marks()
-endfunction
-
-function s:get_spec(key) abort
-  " 先行入力と合わせて
-  "   完成した
-  "     辞書
-  "     文字列
-  "       半端がある
-  "       半端がない→半端が空文字として判断できる
-  "   完成していないが次なる先行入力の可能性がある
-  " 先行入力を無視して単体で
-  "   完成した→直前の先行入力を消すか分岐する必要がある
-  "     辞書
-  "     文字列
-  "       半端がある
-  "       半端がない→半端が空文字として判断できる
-  "   完成していないが次なる先行入力の可能性がある
-  " 完成していないし先行入力にもならない
-
-  " string: バッファに書き出す文字列
-  " store: ローマ字入力バッファの文字列（上書き）
-  " その他：関数など func / mode / expr
-  let spec = { 'string': '', 'store': '', 'key': a:key }
-
-  let current = s:f('store#get', 'hanpa') .. a:key
-  if has_key(tuskk#opts#get('kana_table'), current)
-    let spec.reason = 'combined:found'
-    " s:store.hanpaの残存文字と合わせて完成した場合
-    if s:is_dict(tuskk#opts#get('kana_table')[current])
-      call extend(spec, tuskk#opts#get('kana_table')[current])
-      return spec
-    endif
-    let [kana, roma; _rest] = tuskk#opts#get('kana_table')[current]->split('\A*\zs') + ['']
-    let spec.string = kana
-    let spec.store = roma
-    return spec
-  elseif has_key(tuskk#opts#get('preceding_keys_dict'), current)
-    let spec.reason = 'combined:probably'
-    " 完成はしていないが、先行入力の可能性がある場合
-    let spec.store = current
-    return spec
-  endif
-
-  " ここまでで値がヒットせず、put_hanpaがfalseなら、
-  " storeに残っていた半端な文字をバッファに載せずに消す
-  let spec.string = tuskk#opts#get('put_hanpa') ? s:f('store#get', 'hanpa') : ''
-
-  if has_key(tuskk#opts#get('kana_table'), a:key)
-    let spec.reason = 'alone:found'
-    " 先行入力を無視して単体で完成した場合
-    if s:is_dict(tuskk#opts#get('kana_table')[a:key])
-      call extend(spec, tuskk#opts#get('kana_table')[a:key])
-      " 値が辞書ならput_hanpaに関らずstringは削除
-      " storeに値を保存する
-      let spec.string = ''
-      let spec.store = s:f('store#get', 'hanpa')
-    else
-      let [kana, roma; _rest] = tuskk#opts#get('kana_table')[a:key]->split('\A*\zs') + ['']
-      let spec.string ..= kana
-      let spec.store = roma
-    endif
-
-    return spec
-  elseif has_key(tuskk#opts#get('preceding_keys_dict'), a:key)
-    let spec.reason = 'alone:probably'
-    " 完成はしていないが、単体で先行入力の可能性がある場合
-    let spec.store = a:key
-    return spec
-  endif
-
-  let spec.reason = 'unfound'
-  " ここまで完成しない（かなテーブルに定義が何もない）場合
-  let spec.string ..= a:key
-  let spec.store = ''
-  return spec
 endfunction
 
 function s:suggest_start() abort
@@ -472,15 +399,14 @@ function s:zengo(key) abort
     return ''
   endif
   if s:phase_is('okuri')
-  " nop
+    " nop
+    return ''
   elseif s:phase_is('machi')
     call s:f('store#push', 'machi', a:key)
-    let feed = s:henkan('')
-  else
-    call s:phase_set('machi', 'zengo: start machi')
-    let feed = a:key
+    return [s:henkan(''), {'call': 's:let', 'args': ['phase.kouho', v:true]}]
   endif
-  return feed
+  call s:phase_set('machi', 'zengo: start machi')
+  return a:key
 endfunction
 
 function s:sticky() abort
@@ -524,7 +450,8 @@ function s:backspace() abort
   return feed
 endfunction
 
-function s:kakutei(fallback_key) abort
+function s:kakutei(fallback_key = '') abort
+  defer execute('let s:latest_henkan_item = {}')
   if !s:is_tuskk_completed() && complete_info().selected >= 0
     return "\<c-y>"
   endif
@@ -559,7 +486,7 @@ function s:henkan(fallback_key) abort
   return feed
 endfunction
 
-function s:feed_close_pum() abort
+function s:feed_ensure_close_pum() abort
   return pumvisible() && s:f('store#is_blank', 'machi') ? "\<c-e>" : ''
 endfunction
 function s:suggest_reserve() abort
@@ -576,38 +503,37 @@ endfunction
 function s:ins(key, with_sticky = v:false) abort
   call s:phase_forget()
   let key = a:key
+
+  let feed = []
   if a:with_sticky && !(a:key =~ '^[!-~]$' && tuskk#mode#is_direct())
-
     " TODO direct modeの変換候補を選択した状態で大文字を入力した場合の対処
-    let feed = s:handle_spec({ 'string': '', 'store': '', 'func': 'sticky' })
-
     let key = a:key->tolower()
-    call s:feed([feed, {'call': 's:ins', 'args': [key]}])
-    return
+    call add(feed, {'expr': 's:handle_spec', 'args': [{'func': 'sticky'}]})
   endif
 
-  let spec = s:get_spec(key)
+  let spec = s:f('spec#get', key, s:f('store#get', 'hanpa'))
 
-  if s:is_tuskk_completed()
+  if s:is_tuskk_completed() && complete_info().selected >= 0
         \ && get(spec, 'mode', '') ==# ''
         \ && index(['kakutei', 'backspace', 'henkan'], get(spec, 'func', '')) < 0
-    let feed = s:handle_spec({ 'string': '', 'store': '', 'key': '', 'func': 'kakutei' })
-    call s:feed([feed, {'call': 's:ins', 'args': [key]}])
-    return
+    call insert(feed, {'expr': 's:handle_spec', 'args': [{'func': 'kakutei'}]})
   endif
 
-  let feed = [
-        \ s:handle_spec(spec),
+  call extend(feed, [
+        \ {'expr': 's:handle_spec', 'args': [spec]},
         \ {'call': 's:display_marks'},
-        \ {'expr': 's:feed_close_pum'},
+        \ {'expr': 's:feed_ensure_close_pum'},
         \ {'call': 's:suggest_reserve'},
-        \ ]
+        \ ])
 
+  if !empty(tuskk#opts#get('debug_log_path'))
+    call tuskk#utils#debug_log(feed, s:f('store#get_all'))
+  endif
   call s:feed(feed)
 endfunction
 
 function s:handle_spec(args) abort
-  let spec = a:args
+  let spec = extend({'string': '', 'store': '', 'key': ''}, a:args)
 
   if !s:is_tuskk_completed() && get(spec, 'key', '') =~ '^[!-~]$' && tuskk#mode#is_direct()
     let spec = { 'string': spec.key, 'store': '', 'key': spec.key }
@@ -621,18 +547,15 @@ function s:handle_spec(args) abort
   " 多重コンバートを防止
   let allow_convert = v:true
 
-  " 末尾でstickyを実行するかどうかのフラグ
-  " 変換候補選択中にstickyを実行した場合、いちど確定してからstickyを実行するため、
-  " このフラグを見て実行を後回しにする必要がある
-  let after_sticky = v:false
-
   let feed = ''
   if has_key(spec, 'func')
     " handle func
     if spec.func ==# 'sticky'
       if s:is_tuskk_completed()
-        let feed = s:kakutei('')
-        let after_sticky = v:true
+        let feed = [
+              \ {'expr': 's:kakutei'},
+              \ {'expr': 's:sticky'},
+              \ ]
       else
         let feed = s:sticky()
       endif
@@ -652,12 +575,7 @@ function s:handle_spec(args) abort
       let feed = s:henkan(spec.key)
       let next_kouho = v:true
     elseif spec.func ==# 'zengo'
-      if s:is_tuskk_completed()
-        let feed = s:kakutei('')
-        let feed ..= s:zengo(spec.key)
-      else
-        let feed = s:zengo(spec.key)
-      endif
+      let feed = s:zengo(spec.key)
     elseif spec.func ==# 'extend'
       call s:f('store#hide')
       let char = tuskk#utils#leftchar()
@@ -696,7 +614,7 @@ function s:handle_spec(args) abort
     else
       call tuskk#mode#set_alt(spec.mode)
       if tuskk#mode#is_start_sticky()
-        let after_sticky = v:true
+        let feed = [{'expr': 's:sticky'}]
       endif
     endif
   elseif has_key(spec, 'expr')
@@ -714,14 +632,14 @@ function s:handle_spec(args) abort
 
   if allow_convert
     " TODO カタカナモードでも変換できるようにする
-    let feed = tuskk#mode#convert(feed)
+    if s:is_list(feed)
+      call map(feed, {_,v->s:is_string(v) ? tuskk#mode#convert(v) : v})
+    elseif s:is_string(feed)
+      let feed = tuskk#mode#convert(feed)
+    endif
   endif
 
-  if after_sticky
-    let feed ..= $"\<cmd>call {expand('<SID>')}sticky()\<cr>"
-  endif
-
-  if s:phase_is('hanpa') || tuskk#utils#hasunprintable(feed)
+  if !s:is_string(feed) || s:phase_is('hanpa') || tuskk#utils#hasunprintable(feed)
     return feed
   elseif s:phase_is('machi')
     if tuskk#opts#get('auto_henkan_characters') =~# tuskk#utils#lastchar(feed)

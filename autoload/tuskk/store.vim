@@ -1,4 +1,4 @@
-let s:store = { 'hanpa': '', 'choku': '', 'machi': '', 'okuri': '', 'kouho': '' }
+let s:store = { 'hanpa': '', 'machi': '', 'okuri': '', 'kouho': '' }
 
 function s:export_set(target, str) abort
   let s:store[a:target] = a:str
@@ -6,6 +6,10 @@ endfunction
 
 function s:export_get(target) abort
   return s:store[a:target]
+endfunction
+
+function s:export_get_all() abort
+  return s:store
 endfunction
 
 function s:export_clear(target = '') abort
