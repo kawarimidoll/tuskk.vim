@@ -21,18 +21,20 @@ function s:export_parse(opts) abort
   let s:highlight_kouho = get(a:opts, 'highlight_kouho', 'IncSearch')
   let s:highlight_okuri = get(a:opts, 'highlight_okuri', 'ErrorMsg')
 
-  " " デバッグログ出力先パス
+  " デバッグログ出力先パス
   let s:debug_log_path = get(a:opts, 'debug_log_path', '')->expand()
   if !empty(s:debug_log_path)
     if isdirectory(s:debug_log_path)
-      throw $"debug_log_path is directory {s:debug_log_path}"
+      throw $'ログファイルにディレクトリが指定されています。 {s:debug_log_path}'
     endif
     " 指定されたパスにファイルがなければ作成する
     if glob(s:debug_log_path)->empty()
-      " call s:create_file(s:debug_log_path)
-      echomsg s:create_file(s:debug_log_path)
+      if confirm($'{s:debug_log_path} にログファイルを作成してもよろしいですか？', "&Yes\n&No") != 1
+        throw $'ログファイルを読み込めませんでした。 {s:debug_log_path}'
+      endif
+      call s:create_file(s:debug_log_path)
     endif
-    echomsg s:debug_log_path glob(s:debug_log_path)
+    echomsg '[tuskk] デバッグログ出力先:' s:debug_log_path
   endif
 
   " 自動補完待機時間 (負数の場合は自動補完しない)
