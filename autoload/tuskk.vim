@@ -372,7 +372,7 @@ function s:henkan_start() abort
   let list_len = len(comp_list)
 
   if list_len == 1 && tuskk#opts#get('kakutei_unique')
-    call s:f('store#clear', )
+    call s:f('store#clear')
     call s:phase_set('hanpa', 'kakutei_unique')
     return comp_list[0].abbr
   endif
@@ -570,7 +570,7 @@ function s:handle_spec(args) abort
         endif
       endif
       let feed = s:kakutei(spec.key) .. s:f('store#get', 'hanpa')
-      call s:f('store#clear', )
+      call s:f('store#clear')
     elseif spec.func ==# 'henkan'
       let feed = s:henkan(spec.key)
       let next_kouho = v:true
