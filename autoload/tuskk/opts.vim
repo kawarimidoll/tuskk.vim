@@ -3,6 +3,11 @@ function tuskk#opts#builtin_kana_table() abort
   return json_decode(join(readfile(path), "\n"))
 endfunction
 
+function tuskk#opts#extend_azik_table() abort
+  let path = expand('<script>:p:h:h:h') .. '/resources/azik_table.json'
+  return json_decode(join(readfile(path), "\n"))
+endfunction
+
 function tuskk#opts#builtin_auto_henkan_characters() abort
   return 'を、。．，？」！；：);:）”】』》〉｝］〕}]?.,!'
 endfunction

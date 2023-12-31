@@ -157,6 +157,30 @@ tuskk#opts#builtin_kana_table()              *tuskk#opts#builtin_kana_table()*
     この値を直接、または編集して |tuskk-options-kana_table| に指定することがで
     きます。
 
+tuskk#opts#extend_azik_table()                *tuskk#opts#extend_azik_table()*
+
+    AZIK拡張用のテーブルを返します。
+    https://hp.vector.co.jp/authors/VA002116/azik/azikinfo.htm
+    この値を直接、または編集して |tuskk-options-kana_table| に指定することがで
+    きます。
+
+    |tuskk#opts#builtin_kana_table()| に含まれている項目は除かれているため、こ
+    れ単体ではかなテーブルとしては不完全です。|extendnew()| を使って合成すると
+    便利です。
+
+    設定の例:
+>
+    let base_table = tuskk#opts#builtin_kana_table()
+    let azik_table = tuskk#opts#extend_azik_table()
+
+    unlet! azik_table[';']
+
+    call tuskk#initialize({
+        \ 'jisyo_list':  [ ... ],
+        \ 'kana_table': extendnew(base_table, azik_table),
+        \ })
+<
+
 tuskk#opts#builtin_auto_henkan_characters() *tuskk#opts#builtin_auto_henkan_characters()*
 
     標準の自動変換文字列を返します。
