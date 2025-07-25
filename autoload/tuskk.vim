@@ -566,7 +566,9 @@ function s:handle_spec(args) abort
       if s:is_tuskk_completed()
         let user_data = s:current_complete_item()->get('user_data', {})
         if s:has_key(user_data, 'special')
-          call timer_start(0, {->s:on_kakutei_special(user_data)})
+          " 非同期処理実行時に引数が変わらないよう、deepcopyしておく
+          let user_data_copy = deepcopy(user_data)
+          call timer_start(0, {->s:on_kakutei_special(user_data_copy)})
         endif
       endif
       let feed = s:kakutei(spec.key) .. s:f('store#get', 'hanpa')
