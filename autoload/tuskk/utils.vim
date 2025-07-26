@@ -111,13 +111,15 @@ function tuskk#utils#strsplit(str) abort
   let result = []
   let i = 0
   while i < len(chars)
+    " Vim scriptのexpr-[:]は境界外アクセスでもエラーにならないため
+    " chars[i+1]やchars[i:i+2]のアクセスは安全
     if chars[i] == prefix[0] && chars[i+1] == prefix[1]
       call add(result, chars[i : i+2]->join(''))
-      let i += 2
+      let i += 3
     else
       call add(result, chars[i])
+      let i += 1
     endif
-    let i += 1
   endwhile
   return result
 endfunction
